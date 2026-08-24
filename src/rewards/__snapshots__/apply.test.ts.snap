@@ -1,0 +1,116 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`applyRewards — class divergence snapshots the same lifting session for all five classes 1`] = `
+{
+  "MAGE": [
+    {
+      "amount": 88,
+      "engineVersion": "0.1.0",
+      "kind": "XP",
+    },
+    {
+      "amount": 44,
+      "engineVersion": "0.1.0",
+      "kind": "GOLD",
+    },
+    {
+      "amount": 3,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_STR",
+    },
+    {
+      "amount": 2,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_VIT",
+    },
+  ],
+  "PALADIN": [
+    {
+      "amount": 110,
+      "engineVersion": "0.1.0",
+      "kind": "XP",
+    },
+    {
+      "amount": 55,
+      "engineVersion": "0.1.0",
+      "kind": "GOLD",
+    },
+    {
+      "amount": 3,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_STR",
+    },
+    {
+      "amount": 2,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_VIT",
+    },
+  ],
+  "PRIEST": [
+    {
+      "amount": 99,
+      "engineVersion": "0.1.0",
+      "kind": "XP",
+    },
+    {
+      "amount": 50,
+      "engineVersion": "0.1.0",
+      "kind": "GOLD",
+    },
+    {
+      "amount": 3,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_STR",
+    },
+    {
+      "amount": 2,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_VIT",
+    },
+  ],
+  "ROGUE": [
+    {
+      "amount": 94,
+      "engineVersion": "0.1.0",
+      "kind": "XP",
+    },
+    {
+      "amount": 47,
+      "engineVersion": "0.1.0",
+      "kind": "GOLD",
+    },
+    {
+      "amount": 3,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_STR",
+    },
+    {
+      "amount": 2,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_VIT",
+    },
+  ],
+  "WARRIOR": [
+    {
+      "amount": 138,
+      "engineVersion": "0.1.0",
+      "kind": "XP",
+    },
+    {
+      "amount": 69,
+      "engineVersion": "0.1.0",
+      "kind": "GOLD",
+    },
+    {
+      "amount": 4,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_STR",
+    },
+    {
+      "amount": 3,
+      "engineVersion": "0.1.0",
+      "kind": "STAT_VIT",
+    },
+  ],
+}
+`;

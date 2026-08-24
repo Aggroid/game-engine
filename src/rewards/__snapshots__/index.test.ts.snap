@@ -1,0 +1,17 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`a full training week, end to end turns real sessions into a hero without any of the pieces disagreeing 1`] = `
+{
+  "gold": 174,
+  "level": 2,
+  "stats": {
+    "agi": 3,
+    "end": 5,
+    "foc": 1,
+    "spi": 0,
+    "str": 5,
+    "vit": 4,
+  },
+  "xp": 348,
+}
+`;

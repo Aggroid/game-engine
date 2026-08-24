@@ -1,0 +1,37 @@
+{
+  "name": "@ascend/game-engine",
+  "version": "0.1.0",
+  "description": "Pure, deterministic economy and battle simulator. No I/O, no clock, no randomness.",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".":           { "types": "./dist/index.d.ts",           "default": "./dist/index.js" },
+    "./types":     { "types": "./dist/contracts/types.d.ts", "default": "./dist/contracts/types.js" },
+    "./contracts": { "types": "./dist/contracts/index.d.ts", "default": "./dist/contracts/index.js" },
+    "./rewards":   { "types": "./dist/rewards/index.d.ts",   "default": "./dist/rewards/index.js" },
+    "./battle":    { "types": "./dist/battle/index.d.ts",    "default": "./dist/battle/index.js" }
+  },
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "check:pure": "node scripts/check-pure.mjs",
+    "verify": "npm run check:pure && npm run typecheck && npm test && npm run build",
+    "demo": "npm run build && node scripts/demo.mjs"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.6.3"
+  }
+}

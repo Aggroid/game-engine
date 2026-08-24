@@ -1,0 +1,62 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`foldLedger — order invariance is order-independent for a ledger built from real scored workouts 1`] = `
+{
+  "gold": 253,
+  "level": 3,
+  "stats": {
+    "agi": 6,
+    "end": 10,
+    "foc": 5,
+    "spi": 3,
+    "str": 1,
+    "vit": 0,
+  },
+  "xp": 504,
+}
+`;
+
+exports[`xpForLevel snapshots the shape of the curve 1`] = `
+[
+  [
+    1,
+    0,
+  ],
+  [
+    2,
+    120,
+  ],
+  [
+    3,
+    351,
+  ],
+  [
+    5,
+    1029,
+  ],
+  [
+    10,
+    3616,
+  ],
+  [
+    20,
+    11515,
+  ],
+  [
+    30,
+    22177,
+  ],
+  [
+    50,
+    50002,
+  ],
+  [
+    75,
+    94731,
+  ],
+  [
+    100,
+    148736,
+  ],
+]
+`;

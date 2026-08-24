@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`the caps under a seven-day burst holds the weekly ceiling against someone training all day, every day 1`] = `
+[
+  585,
+  585,
+  585,
+  245,
+  0,
+  0,
+  0,
+]
+`;
