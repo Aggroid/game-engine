@@ -499,3 +499,134 @@ export interface BattleLog {
   /** Number of turns the battle lasted. */
   turns: number;
 }
+
+/* -------------------------------------------------------------------------- *
+ * Gear
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Equipment slots. One item per slot, so a hero's power is bounded by slot count
+ * rather than by how much loot they have hoarded.
+ */
+export const ITEM_SLOTS = ['weapon', 'head', 'chest', 'hands', 'legs', 'trinket'] as const;
+export type ItemSlot = (typeof ITEM_SLOTS)[number];
+
+/**
+ * Rarity tiers, weakest to strongest. Ordered on purpose — drop tables and sort
+ * order both depend on the index, so never reorder this list.
+ */
+export const RARITIES = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'] as const;
+export type Rarity = (typeof RARITIES)[number];
+
+/**
+ * A piece of gear. Definitions are DATA, so the catalogue is retunable without a release.
+ *
+ * `setId` groups items into a set. Set bonuses are what reward class-appropriate
+ * TRAINING rather than just accumulation: a set that boosts strength conversion is only
+ * worth wearing if you actually lift.
+ *
+ * Gear NEVER becomes obsolete (§4.11) — the effort behind it was real, so there is no
+ * expansion-style reset. Power comes from slots and sets, never from an item treadmill.
+ */
+export interface Item {
+  id: string;
+  name: string;
+  slot: ItemSlot;
+  rarity: Rarity;
+  /** Flat additions to the six base stats. Absent keys contribute nothing. */
+  statBonus: Partial<Record<StatKey, number>>;
+  setId?: string;
+  /** Gold price when bought from the shop. Omitted for drop-only items. */
+  price?: number;
+  /** Minimum hero level required to equip. */
+  levelRequirement: number;
+}
+
+/** What the hero currently has equipped. A slot with no entry is empty. */
+export type EquippedItems = Partial<Record<ItemSlot, Item>>;
+
+/**
+ * A set bonus, applied when enough pieces of the same set are equipped.
+ *
+ * `modalityConversionBonus` is the interesting field: it multiplies how efficiently a
+ * real training modality converts. That is what ties gear back to behaviour instead of
+ * making it a pure stat stick.
+ */
+export interface ItemSetBonus {
+  setId: string;
+  piecesRequired: number;
+  statBonus: Partial<Record<StatKey, number>>;
+  modalityConversionBonus?: Partial<Record<Modality, number>>;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Strength set logging
+ * -------------------------------------------------------------------------- */
+
+/**
+ * One logged set. OPTIONAL everywhere: health platforms expose no sets, reps or weights,
+ * so the game must feel complete without this. Logging it earns a quality multiplier on
+ * the strength portion of an activity, never a requirement.
+ */
+export interface StrengthSet {
+  exercise: string;
+  reps: number;
+  /** Kilograms. Bodyweight movements pass 0 rather than omitting the field. */
+  weightKg: number;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Daily quests and streaks
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Kinds of daily goal. Deliberately modest — at least one must be reachable by a walk,
+ * so a bad day still yields a win rather than a broken streak.
+ */
+export const QUEST_KINDS = ['ANY_ACTIVITY', 'REACH_EP', 'SPECIFIC_MODALITY', 'RECOVER'] as const;
+export type QuestKind = (typeof QUEST_KINDS)[number];
+
+export interface DailyQuest {
+  id: string;
+  kind: QuestKind;
+  /** Human-readable goal, generated from the kind and target. */
+  description: string;
+  /** EP for REACH_EP, session count otherwise. */
+  target: number;
+  progress: number;
+  complete: boolean;
+  /** Set for SPECIFIC_MODALITY, absent otherwise. */
+  modality?: Modality;
+  rewardEp: number;
+}
+
+/**
+ * Streak state.
+ *
+ * `graceRemaining` is the forgiveness budget: one missed day per rolling week is absorbed
+ * automatically before a streak breaks, and the player is TOLD it was used. Streak loss is
+ * the single biggest churn trigger in this category, and a streak never wipes earned
+ * progress — only the multiplier.
+ */
+export interface StreakState {
+  current: number;
+  longest: number;
+  /** YYYY-MM-DD of the last qualifying day, or null for a hero who has never trained. */
+  lastQualifyingDate: string | null;
+  graceRemaining: number;
+  graceUsedOn: string | null;
+  multiplier: number;
+}
+
+type _ItemSlotsAreExhaustive = [
+  AssertAssignable<(typeof ITEM_SLOTS)[number], ItemSlot>,
+  AssertAssignable<ItemSlot, (typeof ITEM_SLOTS)[number]>,
+];
+type _RaritiesAreExhaustive = [
+  AssertAssignable<(typeof RARITIES)[number], Rarity>,
+  AssertAssignable<Rarity, (typeof RARITIES)[number]>,
+];
+type _QuestKindsAreExhaustive = [
+  AssertAssignable<(typeof QUEST_KINDS)[number], QuestKind>,
+  AssertAssignable<QuestKind, (typeof QUEST_KINDS)[number]>,
+];
