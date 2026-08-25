@@ -25,7 +25,7 @@ import {
 
 describe('the rewards barrel', () => {
   it('exports the engine version', () => {
-    expect(ENGINE_VERSION).toBe('0.1.0');
+    expect(ENGINE_VERSION).toBe('0.2.0');
   });
 
   it('exports every entry point as a callable binding', () => {

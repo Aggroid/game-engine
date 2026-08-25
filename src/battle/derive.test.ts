@@ -3,7 +3,15 @@
  * two properties that justify that design: it is pure, and class is the only thing that
  * changes which stat feeds attack.
  */
-import { HERO_CLASSES, type Hero, type HeroClass, type StatBlock } from '../contracts/types';
+import {
+  HERO_CLASSES,
+  type EquippedItems,
+  type Hero,
+  type HeroClass,
+  type StatBlock,
+} from '../contracts/types';
+import { IRONBOUND_SET_ID, WINDRUNNER_SET_ID, itemsInSet } from '../gear/catalogue';
+import { applyGear } from '../gear/equip';
 import {
   ATTACK_BASE,
   ATTACK_PER_PRIMARY,
@@ -134,5 +142,70 @@ describe('deriveCombat', () => {
     for (const value of Object.values(derived)) {
       expect(value).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+/**
+ * Gear reaches combat the same way stats do: as a projection, never as stored state. These
+ * tests pin the compatibility promise as hard as the behaviour — the one-argument call is what
+ * `backend` and `mobile-app` already ship, and it must keep meaning exactly what it meant.
+ */
+describe('deriveCombat with gear', () => {
+  const fullSet = (setId: string): EquippedItems =>
+    Object.fromEntries(itemsInSet(setId).map((piece) => [piece.slot, piece]));
+
+  it('is identical to the one-argument call for a hero wearing nothing', () => {
+    const hero = makeHero();
+    expect(deriveCombat(hero, {})).toEqual(deriveCombat(hero));
+  });
+
+  it('derives from GEARED stats, so equipment shows up in the fight', () => {
+    const hero = makeHero({ heroClass: 'WARRIOR' });
+    const bare = deriveCombat(hero);
+    const geared = deriveCombat(hero, fullSet(IRONBOUND_SET_ID));
+
+    // ironbound is a STR/VIT set and WARRIOR attacks off STR, so all four must move.
+    expect(geared.attack).toBeGreaterThan(bare.attack);
+    expect(geared.hp).toBeGreaterThan(bare.hp);
+    expect(geared.defence).toBeGreaterThan(bare.defence);
+    expect(geared.stamina).toBeGreaterThanOrEqual(bare.stamina);
+  });
+
+  it('matches deriving from stats that already had the gear applied', () => {
+    const hero = makeHero();
+    const equipped = fullSet(IRONBOUND_SET_ID);
+    const preGeared = makeHero({ stats: applyGear(hero.stats, equipped) });
+
+    expect(deriveCombat(hero, equipped)).toEqual(deriveCombat(preGeared));
+  });
+
+  it('never writes gear into the hero — earned stats stay the fold of the ledger', () => {
+    const hero = makeHero();
+    const before = JSON.parse(JSON.stringify(hero)) as Hero;
+
+    deriveCombat(hero, fullSet(WINDRUNNER_SET_ID));
+    deriveCombat(hero, fullSet(IRONBOUND_SET_ID));
+
+    expect(hero).toEqual(before);
+  });
+
+  it('is deterministic — the same hero and loadout always derive the same block', () => {
+    const hero = makeHero();
+    const equipped = fullSet(WINDRUNNER_SET_ID);
+    expect(deriveCombat(hero, equipped)).toEqual(deriveCombat(hero, equipped));
+  });
+
+  it('keeps every integral value integral once gear is applied', () => {
+    const derived = deriveCombat(makeHero(), fullSet(WINDRUNNER_SET_ID));
+    expect(Number.isInteger(derived.hp)).toBe(true);
+    expect(Number.isInteger(derived.attack)).toBe(true);
+    expect(Number.isInteger(derived.defence)).toBe(true);
+    expect(Number.isInteger(derived.regen)).toBe(true);
+    expect(Number.isInteger(derived.stamina)).toBe(true);
+  });
+
+  it('still respects the crit ceiling for an AGI set on an AGI class', () => {
+    const rogue = makeHero({ heroClass: 'ROGUE', stats: statBlock({ agi: 10000 }) });
+    expect(deriveCombat(rogue, fullSet(WINDRUNNER_SET_ID)).critPct).toBe(CRIT_PCT_MAX);
   });
 });

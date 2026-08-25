@@ -548,9 +548,14 @@ export type EquippedItems = Partial<Record<ItemSlot, Item>>;
 /**
  * A set bonus, applied when enough pieces of the same set are equipped.
  *
- * `modalityConversionBonus` is the interesting field: it multiplies how efficiently a
+ * `modalityConversionBonus` is the interesting field: it MULTIPLIES how efficiently a
  * real training modality converts. That is what ties gear back to behaviour instead of
  * making it a pure stat stick.
+ *
+ * SEMANTICS, because the name invites the wrong reading: these are MULTIPLIERS, not
+ * additive percentages. `1.1` means +10%; identity is `1`, NOT `0`; multiple active
+ * bonuses compose as a PRODUCT. An additive reading of `0.1` would silently reduce
+ * conversion to a tenth instead of raising it by a tenth.
  */
 export interface ItemSetBonus {
   setId: string;
@@ -629,4 +634,72 @@ type _RaritiesAreExhaustive = [
 type _QuestKindsAreExhaustive = [
   AssertAssignable<(typeof QUEST_KINDS)[number], QuestKind>,
   AssertAssignable<QuestKind, (typeof QUEST_KINDS)[number]>,
+];
+
+/* -------------------------------------------------------------------------- *
+ * Wire submission — the client's side of ingestion
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Where an activity came from, as CLAIMED by the client.
+ */
+export const ACTIVITY_SOURCES = ['HEALTHKIT', 'HEALTH_CONNECT', 'IN_APP', 'MANUAL'] as const;
+export type ActivitySource = (typeof ACTIVITY_SOURCES)[number];
+
+/**
+ * What a client is allowed to POST for one activity.
+ *
+ * NOTE WHAT IS MISSING: there is no `trustTier` here, and that omission is the point.
+ *
+ * `trustTier` gates ranked boards and guild goals and carries a reward multiplier, so it
+ * is precisely the field an attacker wants to set. If the client asserted it, a patched
+ * build would simply claim `DEVICE_VERIFIED` for a hand-typed session and the entire
+ * trust-tier design (§4.9) would be decorative. The server MUST derive it — see
+ * `trustTierForSource` — and must overwrite anything that arrives claiming otherwise.
+ *
+ * `source` is still only a client claim. Deriving from it closes the trivial attack, not
+ * the deep one; real provenance needs platform attestation (App Attest / Play Integrity),
+ * which is a later hardening step and is tracked separately.
+ *
+ * `localDate` and `timezone` are carried so the server can bucket the activity into the
+ * right training day without guessing; the server should still validate them against the
+ * user's stored timezone rather than trusting them outright.
+ */
+export interface ActivitySubmission {
+  activityType: string;
+  durationSec: number;
+  startedAtMs: number;
+  endedAtMs: number;
+  source: ActivitySource;
+  sourceActivityId?: string;
+  distanceM?: number;
+  activeKcal?: number;
+  avgHr?: number;
+  /** 1..10 RPE. The only intensity signal a wearable-less manual entry can offer. */
+  perceivedEffort?: number;
+  /** Optional strength detail. Earns a quality multiplier; never required. */
+  sets?: StrengthSet[];
+}
+
+/**
+ * The server-side mapping from claimed provenance to trust tier.
+ *
+ * This is the ONLY way a `TrustTier` should ever be produced from a request. Keep it a
+ * total function over `ActivitySource` so a new source cannot be added without deciding
+ * what it is worth.
+ */
+export const TRUST_TIER_FOR_SOURCE: Readonly<Record<ActivitySource, TrustTier>> = {
+  HEALTHKIT: 'DEVICE_VERIFIED',
+  HEALTH_CONNECT: 'DEVICE_VERIFIED',
+  IN_APP: 'APP_TRACKED',
+  MANUAL: 'MANUAL',
+};
+
+export function trustTierForSource(source: ActivitySource): TrustTier {
+  return TRUST_TIER_FOR_SOURCE[source];
+}
+
+type _ActivitySourcesAreExhaustive = [
+  AssertAssignable<(typeof ACTIVITY_SOURCES)[number], ActivitySource>,
+  AssertAssignable<ActivitySource, (typeof ACTIVITY_SOURCES)[number]>,
 ];

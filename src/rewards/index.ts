@@ -15,6 +15,7 @@ export { ENGINE_VERSION } from './version';
 export * from './constants';
 export * from './modality';
 export * from './caps';
+export * from './setLog';
 export * from './effort';
 export * from './apply';
 export * from './progression';

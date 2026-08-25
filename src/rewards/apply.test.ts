@@ -40,7 +40,7 @@ describe('applyRewards — versioning', () => {
     // Guards the cycle fix: if the version ever moves back into the barrel, this is the
     // pair of imports that would start disagreeing under a non-CommonJS loader.
     expect(LEAF_ENGINE_VERSION).toBe(ENGINE_VERSION);
-    expect(ENGINE_VERSION).toBe('0.1.0');
+    expect(ENGINE_VERSION).toBe('0.2.0');
   });
 });
 

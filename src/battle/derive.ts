@@ -6,8 +6,15 @@
  * the database at level-up — means every rebalance leaves millions of stale rows behind
  * and a hero's power depends on when it last happened to be recomputed. Deriving on demand
  * makes a tuning change in `constants.ts` apply to every hero in the game simultaneously.
+ *
+ * GEAR FOLLOWS THE SAME RULE. Equipment is an OPTIONAL second argument, not a field on `Hero`,
+ * because a geared stat block is a projection too: the hero's `stats` are the fold of their
+ * reward ledger and nothing else, so equipping an item must never write to them (see
+ * `applyGear`). Passing no equipment derives an unequipped hero, which is exactly what the
+ * single-argument call has always meant.
  */
-import type { DerivedCombat, Hero } from '../contracts/types';
+import type { DerivedCombat, EquippedItems, Hero } from '../contracts/types';
+import { applyGear } from '../gear/equip';
 import {
   ATTACK_BASE,
   ATTACK_PER_PRIMARY,
@@ -38,14 +45,18 @@ function toStat(value: number): number {
 /**
  * Computes a hero's combat numbers from level, class and the six earned stats.
  *
- * PURE. Reads `hero`, mutates nothing, touches no clock and no randomness — the same hero
- * always derives the same block, which is what lets a stored `BattleLog` be re-simulated.
+ * PURE. Reads `hero` and `equipped`, mutates neither, touches no clock and no randomness — the
+ * same hero with the same loadout always derives the same block, which is what lets a stored
+ * `BattleLog` be re-simulated. A battle log must therefore record the loadout it was fought in,
+ * for the same reason it records the seed.
  *
- * @param hero The hero as stored: identity plus earned totals.
+ * @param hero     The hero as stored: identity plus EARNED totals, never gear-inflated.
+ * @param equipped What the hero has on, if anything. Omit for an unequipped derivation — the
+ *                 one-argument call is unchanged and still means exactly what it always did.
  * @returns Freshly derived combat values. Never cached, never written back to the hero.
  */
-export function deriveCombat(hero: Hero): DerivedCombat {
-  const { stats } = hero;
+export function deriveCombat(hero: Hero, equipped?: EquippedItems): DerivedCombat {
+  const stats = equipped === undefined ? hero.stats : applyGear(hero.stats, equipped);
   const primaryStat = CLASS_PRIMARY_STAT[hero.heroClass];
 
   return {

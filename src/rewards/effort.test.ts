@@ -6,7 +6,14 @@
  * reference constant or the resolution order shows up as a reviewable diff rather than as
  * a quiet economy shift nobody notices until players do.
  */
-import { MODALITIES, type ActivityInput, type EngineContext, type Modality } from '../contracts/types';
+import {
+  MODALITIES,
+  type ActivityInput,
+  type EngineContext,
+  type EquippedItems,
+  type Modality,
+} from '../contracts/types';
+import { IRONBOUND_SET_ID, WINDRUNNER_SET_ID, itemsInSet } from '../gear/catalogue';
 
 import { ACTIVITY_TYPE_BY_MODALITY, activity, context, createRandom } from './__fixtures__/support';
 import {
@@ -388,5 +395,73 @@ describe('computeEffortPoints — properties', () => {
 
     // Same work, same day, same payout — farming the cap by chopping it up must not pay.
     expect(Math.abs(banked - single)).toBeLessThanOrEqual(5);
+  });
+});
+
+/**
+ * Gear's one and only route into the reward economy: a completed set's
+ * `modalityConversionBonus`. Gear STAT bonuses deliberately do not appear here — those are a
+ * combat projection, and a heavier chestplate must never earn a player more XP for the same run.
+ */
+describe('computeEffortPoints with gear equipped', () => {
+  const fullSet = (setId: string): EquippedItems =>
+    Object.fromEntries(itemsInSet(setId).map((piece) => [piece.slot, piece]));
+
+  const scored = (modality: Modality, equipped?: EquippedItems) =>
+    computeEffortPoints(
+      activity({ activityType: ACTIVITY_TYPE_BY_MODALITY[modality], durationSec: ONE_HOUR_SEC }),
+      context(),
+      equipped === undefined ? {} : { equipped },
+    );
+
+  it('scores exactly as before for a hero wearing nothing', () => {
+    for (const modality of MODALITIES) {
+      const bare = computeEffortPoints(
+        activity({ activityType: ACTIVITY_TYPE_BY_MODALITY[modality], durationSec: ONE_HOUR_SEC }),
+        context(),
+      );
+      expect(scored(modality)).toEqual(bare);
+      expect(scored(modality, {})).toEqual(bare);
+    }
+  });
+
+  it('pays a completed set more for the modality that set is about', () => {
+    expect(scored('strength', fullSet(IRONBOUND_SET_ID)).ep).toBeGreaterThan(scored('strength').ep);
+    expect(scored('cardio_steady', fullSet(WINDRUNNER_SET_ID)).ep).toBeGreaterThan(
+      scored('cardio_steady').ep,
+    );
+  });
+
+  it('pays nothing extra for a modality the set has no opinion about', () => {
+    const iron = fullSet(IRONBOUND_SET_ID);
+    for (const modality of MODALITIES.filter((m) => m !== 'strength')) {
+      expect(scored(modality, iron).ep).toBe(scored(modality).ep);
+    }
+  });
+
+  it('pays nothing for an incomplete set — the bonus is the reward for finishing it', () => {
+    const partial = Object.fromEntries(
+      itemsInSet(IRONBOUND_SET_ID)
+        .slice(0, 1)
+        .map((piece) => [piece.slot, piece]),
+    );
+    expect(scored('strength', partial).ep).toBe(scored('strength').ep);
+  });
+
+  it('keeps EP integral with gear applied', () => {
+    const geared = scored('strength', fullSet(IRONBOUND_SET_ID));
+    expect(Number.isInteger(geared.ep)).toBe(true);
+    expect(Number.isInteger(geared.rawEp)).toBe(true);
+  });
+
+  it('stacks with a set log, both bounded, on a strength session', () => {
+    const iron = fullSet(IRONBOUND_SET_ID);
+    const both = computeEffortPoints(
+      activity({ activityType: ACTIVITY_TYPE_BY_MODALITY.strength, durationSec: ONE_HOUR_SEC }),
+      context(),
+      { equipped: iron, sets: Array.from({ length: 12 }, () => ({ exercise: 'squat', reps: 8, weightKg: 60 })) },
+    );
+
+    expect(both.ep).toBeGreaterThan(scored('strength', iron).ep);
   });
 });

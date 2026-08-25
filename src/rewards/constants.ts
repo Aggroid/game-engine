@@ -180,14 +180,44 @@ export const TRUST_MULTIPLIER: Readonly<Record<TrustTier, number>> = {
 export const PROTEIN_ADEQUACY_MAX_BONUS = 0.15;
 
 /**
- * Ceiling of the future set-log quality modifier — the reward for logging a strength
- * session set by set instead of dropping in a duration.
+ * Ceiling of the set-log quality modifier — the reward for logging a strength session set
+ * by set instead of dropping in a duration.
  *
- * RESERVED, not yet applied: `ActivityInput` carries no set data at M0, so nothing reads
- * this today. It lives here now so that when set logging lands, its dial is already in
- * the one file a rebalance touches, rather than being invented inline under deadline.
+ * ASYMPTOTIC, NEVER REACHED (see `setLog.ts`): the multiplier approaches this value as
+ * logged work grows and touches it at infinity, so this is a true upper bound rather than a
+ * target to be hit. That matters because the alternative — a linear ramp that maxes out —
+ * has a cliff, and a cliff is where a player learns to log exactly eight sets and stop.
+ *
+ * 25% is deliberately worth having and deliberately not worth faking: no health platform
+ * exposes sets, reps or weights, so this data is always self-reported. Any number large
+ * enough to change how a player trains would instead change how a player types.
  */
 export const SET_LOG_QUALITY_MAX = 1.25;
+
+/**
+ * Notional load in kilograms credited to a bodyweight movement — a set logged with
+ * `weightKg: 0`, which the contract says is how bodyweight work is recorded.
+ *
+ * Pricing a press-up at zero would zero out the entire set-log bonus for exactly the people
+ * most likely to be using it: the beginner, the home trainer, the calisthenics athlete. Held
+ * well below a typical barbell load, so it credits the work without making bodyweight the
+ * efficient way to farm the multiplier.
+ */
+export const SET_LOG_BODYWEIGHT_LOAD_KG = 20;
+
+/**
+ * The logged work, in kilogram-reps, at which HALF of the available set-log bonus is earned.
+ *
+ * This one number sets the whole shape of the curve, which is a hyperbola rather than a
+ * ramp: `work / (work + this)`. Consequences, all of them intended —
+ *  - a single set earns a visible but small share, so one set can never max the bonus;
+ *  - each additional set is worth less than the one before it, so there is no volume to
+ *    grind towards and no reason to invent sets that did not happen;
+ *  - the ceiling is unreachable, so `SET_LOG_QUALITY_MAX` is a bound and not a checkpoint.
+ * Set around a serious session's tonnage (roughly 4000 kg-reps, e.g. 8 sets x 8 reps x 60 kg)
+ * so that a real session earns most of the way there and nothing earns all of it.
+ */
+export const SET_LOG_HALF_CREDIT_WORK = 4000;
 
 /* -------------------------------------------------------------------------- *
  * Caps — duty of care first, anti-farming second

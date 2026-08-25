@@ -33,9 +33,12 @@ import type {
   ActivityInput,
   EffortResult,
   EngineContext,
+  EquippedItems,
   IntensityTier,
   Modality,
+  StrengthSet,
 } from '../contracts/types';
+import { gearConversionMultiplier } from '../gear/setBonuses';
 
 import { applyCaps } from './caps';
 import {
@@ -54,11 +57,36 @@ import {
   TRUST_MULTIPLIER,
 } from './constants';
 import { UNKNOWN_MODALITY, normaliseModality } from './modality';
+import { STRENGTH_MODALITY, setLogQualityMultiplier } from './setLog';
 
 /** An intensity value together with the rung of the fidelity ladder that produced it. */
 interface ResolvedIntensity {
   intensity: number;
   tier: IntensityTier;
+}
+
+/**
+ * The optional extras a caller may know about a session, beyond what the device reported.
+ *
+ * WHY A BAG AND NOT MORE POSITIONAL PARAMETERS: both of these are genuinely optional and more
+ * will follow (§ set logging landed after gear, and neither existed at M0). A third and fourth
+ * positional optional would fossilise the order in which features happened to be built, and
+ * every consumer would have to pass `undefined` to skip one. A bag also keeps this
+ * additive — `computeEffortPoints(activity, ctx)` is still exactly what it was, which matters
+ * because this package is a versioned git dependency in two other repositories.
+ */
+export interface EffortOptions {
+  /**
+   * The sets the user typed in for a strength session, if any. Earns the set-log quality
+   * multiplier on strength work and is ignored for every other modality.
+   */
+  sets?: readonly StrengthSet[];
+  /**
+   * What the hero is wearing. Only ever read for `modalityConversionBonus` from ACTIVE set
+   * bonuses — gear's stat bonuses belong to combat derivation, not to the reward economy,
+   * or wearing a heavier chestplate would earn a player more XP for the same run.
+   */
+  equipped?: EquippedItems;
 }
 
 /**
@@ -165,20 +193,46 @@ function resolveModifiers(activity: ActivityInput, ctx: EngineContext): number {
  * result, on any machine, in any year. Nothing is read from the environment and nothing
  * is thrown — a missing signal costs fidelity, never the reward.
  *
+ * Two of the terms are OPTIONAL EXTRAS the device could never report (see `EffortOptions`):
+ * a set-by-set log, which earns a quality multiplier on STRENGTH work only, and the hero's
+ * equipment, whose active set bonuses may convert one modality more efficiently. Both default
+ * to neutral, so `computeEffortPoints(activity, ctx)` scores exactly as it always did.
+ *
  * @param activity One logged session, raw platform `activityType` and all.
  * @param ctx      The player and moment facts the engine may not look up for itself,
  *                 including the day's and week's banked EP that drive the caps.
+ * @param options  Optional extras: logged sets, and what the hero is wearing.
  * @returns `rawEp` (pre-cap), `ep` (payable), the `intensityTier` and `modality` actually
  *          used, and a `capReason` when a cap trimmed the score.
  */
-export function computeEffortPoints(activity: ActivityInput, ctx: EngineContext): EffortResult {
+export function computeEffortPoints(
+  activity: ActivityInput,
+  ctx: EngineContext,
+  options?: EffortOptions,
+): EffortResult {
   const modality = normaliseModality(activity.activityType);
   const minutes = toMinutes(activity.durationSec);
   const { intensity, tier } = resolveIntensity(activity, ctx, modality);
 
+  // Strength only. Anywhere else this is neutral, because anywhere else the work is already
+  // measurable and the bonus would be paying for typing rather than for training.
+  const setQuality =
+    modality === STRENGTH_MODALITY
+      ? setLogQualityMultiplier(options?.sets)
+      : NEUTRAL_MULTIPLIER;
+
+  const gearConversion = gearConversionMultiplier(options?.equipped, modality);
+
   const rawEp = Math.max(
     0,
-    Math.round(minutes * intensity * MODALITY_WEIGHT[modality] * resolveModifiers(activity, ctx)),
+    Math.round(
+      minutes *
+        intensity *
+        MODALITY_WEIGHT[modality] *
+        resolveModifiers(activity, ctx) *
+        setQuality *
+        gearConversion,
+    ),
   );
 
   const { ep, capReason } = applyCaps(rawEp, ctx);

@@ -16,8 +16,16 @@
  *   SIM_VERSION    — the battle simulator. Bump when a single event could move.
  * Both are written onto the rows they produce, which is what makes a rebalance a
  * REPLAY rather than a migration.
+ *
+ * `gear`, `quests` and `streaks` all sit UNDER those two stamps rather than carrying their own:
+ * gear and set logging feed the EP formula (so they are `ENGINE_VERSION`), and quests and streaks
+ * produce no ledger rows at all — they hand the caller a target and a multiplier, and the caller
+ * writes the row.
  */
 
 export * from './contracts';
 export * from './rewards';
 export * from './battle';
+export * from './gear';
+export * from './quests';
+export * from './streaks';
