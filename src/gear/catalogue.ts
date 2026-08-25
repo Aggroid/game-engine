@@ -166,3 +166,21 @@ export function itemsInSet(setId: string): readonly Item[] {
 export const SET_IDS: readonly string[] = [
   ...new Set(ITEM_CATALOGUE.flatMap((item) => (item.setId === undefined ? [] : [item.setId]))),
 ];
+
+/**
+ * Display names for sets.
+ *
+ * Kept here rather than derived from the id: title-casing `ironbound` happens to read
+ * fine, but a set called `deep-water-ii` would not, and a UI has no business inventing
+ * product names from slugs. Every set id must have an entry — `setDisplayName` is total
+ * over `SET_IDS` and a missing entry fails typecheck.
+ */
+export const SET_DISPLAY_NAME: Readonly<Record<string, string>> = {
+  [IRONBOUND_SET_ID]: 'Ironbound',
+  [WINDRUNNER_SET_ID]: 'Windrunner',
+};
+
+/** The set's display name, falling back to the id so an unknown set degrades rather than blanks. */
+export function setDisplayName(setId: string): string {
+  return SET_DISPLAY_NAME[setId] ?? setId;
+}
