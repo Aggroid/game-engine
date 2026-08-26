@@ -1,24 +1,53 @@
 {
   "name": "@ascend/game-engine",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Pure, deterministic economy and battle simulator. No I/O, no clock, no randomness.",
   "license": "UNLICENSED",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".":           { "types": "./dist/index.d.ts",           "default": "./dist/index.js" },
-    "./types":     { "types": "./dist/contracts/types.d.ts", "default": "./dist/contracts/types.js" },
-    "./contracts": { "types": "./dist/contracts/index.d.ts", "default": "./dist/contracts/index.js" },
-    "./rewards":   { "types": "./dist/rewards/index.d.ts",   "default": "./dist/rewards/index.js" },
-    "./battle":    { "types": "./dist/battle/index.d.ts",    "default": "./dist/battle/index.js" },
-    "./gear":      { "types": "./dist/gear/index.d.ts",      "default": "./dist/gear/index.js" },
-    "./quests":    { "types": "./dist/quests/index.d.ts",    "default": "./dist/quests/index.js" },
-    "./streaks":   { "types": "./dist/streaks/index.d.ts",   "default": "./dist/streaks/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/contracts/types.d.ts",
+      "default": "./dist/contracts/types.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./rewards": {
+      "types": "./dist/rewards/index.d.ts",
+      "default": "./dist/rewards/index.js"
+    },
+    "./battle": {
+      "types": "./dist/battle/index.d.ts",
+      "default": "./dist/battle/index.js"
+    },
+    "./gear": {
+      "types": "./dist/gear/index.d.ts",
+      "default": "./dist/gear/index.js"
+    },
+    "./quests": {
+      "types": "./dist/quests/index.d.ts",
+      "default": "./dist/quests/index.js"
+    },
+    "./streaks": {
+      "types": "./dist/streaks/index.d.ts",
+      "default": "./dist/streaks/index.js"
+    }
   },
-  "files": ["dist"],
-  "engines": { "node": ">=20" },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "jest",
