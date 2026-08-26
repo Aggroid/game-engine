@@ -3,3 +3,9 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+# Secrets — never commit. game-engine should never need one (zero I/O),
+# but the guard costs nothing and its absence would be silent.
+.env
+.env.*
+!.env.example
