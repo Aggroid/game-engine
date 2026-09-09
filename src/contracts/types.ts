@@ -515,7 +515,7 @@ export type ItemSlot = (typeof ITEM_SLOTS)[number];
  * Rarity tiers, weakest to strongest. Ordered on purpose — drop tables and sort
  * order both depend on the index, so never reorder this list.
  */
-export const RARITIES = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'] as const;
+export const RARITIES = ['POOR', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'] as const;
 export type Rarity = (typeof RARITIES)[number];
 
 /**

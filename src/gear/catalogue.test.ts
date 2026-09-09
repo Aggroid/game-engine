@@ -98,15 +98,34 @@ describe('the sets', () => {
     expect(SET_IDS).toEqual(expect.arrayContaining([IRONBOUND_SET_ID, WINDRUNNER_SET_ID]));
   });
 
-  it.each([IRONBOUND_SET_ID, WINDRUNNER_SET_ID])('completes %s — one piece per slot', (setId) => {
-    const pieces = itemsInSet(setId);
-    expect(pieces).toHaveLength(SET_BONUS_FULL_PIECES);
-    expect(pieces.map((piece) => piece.slot).sort()).toEqual([...ITEM_SLOTS].sort());
-  });
+  it.each([IRONBOUND_SET_ID, WINDRUNNER_SET_ID])(
+    'completes %s — every slot except weapon',
+    (setId) => {
+      const pieces = itemsInSet(setId);
+      expect(pieces).toHaveLength(SET_BONUS_FULL_PIECES);
 
-  it('means what a player thinks by "full set" — one item in every slot', () => {
-    expect(SET_BONUS_FULL_PIECES).toBe(ITEM_SLOTS.length);
+      const expected = ITEM_SLOTS.filter((slot) => slot !== 'weapon');
+      expect(pieces.map((piece) => piece.slot).sort()).toEqual([...expected].sort());
+    },
+  );
+
+  /**
+   * A full set is FIVE pieces, one short of the six slots, and the free slot is
+   * the weapon.
+   *
+   * This was six — one item in every slot — which meant completing a set
+   * dictated the entire loadout and left the player no decision to make. With
+   * the weapon free, the single highest-impact item is always something to hunt
+   * or buy, which is what gives the auction house its most valuable listings.
+   * WoW leaves weapons out of tier sets for the same reason.
+   */
+  it('leaves exactly one slot free, and it is the weapon', () => {
+    expect(SET_BONUS_FULL_PIECES).toBe(ITEM_SLOTS.length - 1);
     expect(SET_BONUS_PARTIAL_PIECES).toBeLessThan(SET_BONUS_FULL_PIECES);
+
+    for (const setId of SET_IDS) {
+      expect(itemsInSet(setId).some((piece) => piece.slot === 'weapon')).toBe(false);
+    }
   });
 
   it('declares no bonus for a set with no pieces, and no set with no bonus', () => {

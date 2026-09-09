@@ -11,8 +11,8 @@
  * a row states an item's identity — id, name, slot, rarity, its own stat bonus and the set
  * it belongs to. It does NOT state its level gate or its price: those follow from its rarity
  * and are looked up from `constants.ts` when the row is projected into an `Item`. That is the
- * one piece of logic in this file, and it buys a guarantee no review process can: a MYTHIC
- * item cannot be sold at a COMMON price, and no item can carry a hand-typed level gate that
+ * one piece of logic in this file, and it buys a guarantee no review process can: a LEGENDARY
+ * item cannot be sold at a POOR price, and no item can carry a hand-typed level gate that
  * silently disagrees with its tier.
  *
  * THE SETS ARE THE POINT. Two complete six-piece sets exist (`ironbound`, `windrunner`) and
@@ -58,47 +58,51 @@ interface CatalogueRow {
  * stats are added to earned stats, and earned stats are integers by repo invariant.
  */
 const CATALOGUE_ROWS: readonly CatalogueRow[] = [
-  // COMMON — the starter kit. One per slot, so a level 1 hero can fill every slot on day one.
-  { id: 'worn-barbell', name: 'Worn Barbell', slot: 'weapon', rarity: 'COMMON', statBonus: { str: 3 } },
-  { id: 'frayed-sweatband', name: 'Frayed Sweatband', slot: 'head', rarity: 'COMMON', statBonus: { foc: 2, end: 1 } },
-  { id: 'faded-training-vest', name: 'Faded Training Vest', slot: 'chest', rarity: 'COMMON', statBonus: { vit: 2, end: 1 } },
-  { id: 'chalked-wraps', name: 'Chalked Wraps', slot: 'hands', rarity: 'COMMON', statBonus: { str: 2, agi: 1 } },
-  { id: 'split-shorts', name: 'Split Shorts', slot: 'legs', rarity: 'COMMON', statBonus: { agi: 2, end: 1 } },
-  { id: 'cracked-stopwatch', name: 'Cracked Stopwatch', slot: 'trinket', rarity: 'COMMON', statBonus: { foc: 2, spi: 1 } },
+  // POOR — the starter kit. One per slot, so a level 1 hero can fill every slot on day one.
+  { id: 'worn-barbell', name: 'Worn Barbell', slot: 'weapon', rarity: 'POOR', statBonus: { str: 3 } },
+  { id: 'frayed-sweatband', name: 'Frayed Sweatband', slot: 'head', rarity: 'POOR', statBonus: { foc: 2, end: 1 } },
+  { id: 'faded-training-vest', name: 'Faded Training Vest', slot: 'chest', rarity: 'POOR', statBonus: { vit: 2, end: 1 } },
+  { id: 'chalked-wraps', name: 'Chalked Wraps', slot: 'hands', rarity: 'POOR', statBonus: { str: 2, agi: 1 } },
+  { id: 'split-shorts', name: 'Split Shorts', slot: 'legs', rarity: 'POOR', statBonus: { agi: 2, end: 1 } },
+  { id: 'cracked-stopwatch', name: 'Cracked Stopwatch', slot: 'trinket', rarity: 'POOR', statBonus: { foc: 2, spi: 1 } },
 
-  // RARE — the first real upgrade, and the first gear a player buys rather than is given.
-  { id: 'balanced-kettlebell', name: 'Balanced Kettlebell', slot: 'weapon', rarity: 'RARE', statBonus: { str: 4, vit: 2 } },
-  { id: 'focus-visor', name: 'Focus Visor', slot: 'head', rarity: 'RARE', statBonus: { foc: 4, spi: 2 } },
-  { id: 'compression-harness', name: 'Compression Harness', slot: 'chest', rarity: 'RARE', statBonus: { vit: 4, end: 2 } },
-  { id: 'grip-tape-gloves', name: 'Grip Tape Gloves', slot: 'hands', rarity: 'RARE', statBonus: { str: 3, agi: 3 } },
-  { id: 'carbon-trainers', name: 'Carbon Trainers', slot: 'legs', rarity: 'RARE', statBonus: { agi: 4, end: 2 } },
-  { id: 'heart-rate-strap', name: 'Heart Rate Strap', slot: 'trinket', rarity: 'RARE', statBonus: { end: 4, foc: 2 } },
+  // UNCOMMON — the first real upgrade, and the first gear a player buys rather than is given.
+  { id: 'balanced-kettlebell', name: 'Balanced Kettlebell', slot: 'weapon', rarity: 'UNCOMMON', statBonus: { str: 4, vit: 2 } },
+  { id: 'focus-visor', name: 'Focus Visor', slot: 'head', rarity: 'UNCOMMON', statBonus: { foc: 4, spi: 2 } },
+  { id: 'compression-harness', name: 'Compression Harness', slot: 'chest', rarity: 'UNCOMMON', statBonus: { vit: 4, end: 2 } },
+  { id: 'grip-tape-gloves', name: 'Grip Tape Gloves', slot: 'hands', rarity: 'UNCOMMON', statBonus: { str: 3, agi: 3 } },
+  { id: 'carbon-trainers', name: 'Carbon Trainers', slot: 'legs', rarity: 'UNCOMMON', statBonus: { agi: 4, end: 2 } },
+  { id: 'heart-rate-strap', name: 'Heart Rate Strap', slot: 'trinket', rarity: 'UNCOMMON', statBonus: { end: 4, foc: 2 } },
 
-  // EPIC — the `ironbound` set. Complete: one piece in every slot. STR and VIT, and at six
+  // RARE — the `ironbound` set. Complete: one piece in every slot. STR and VIT, and at six
   // pieces it converts real strength work better (see `setBonuses.ts`).
-  { id: 'ironbound-bar', name: 'Ironbound Bar', slot: 'weapon', rarity: 'EPIC', statBonus: { str: 7, vit: 3 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-helm', name: 'Ironbound Helm', slot: 'head', rarity: 'EPIC', statBonus: { vit: 6, foc: 3 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-plate', name: 'Ironbound Plate', slot: 'chest', rarity: 'EPIC', statBonus: { vit: 8, str: 2 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-grips', name: 'Ironbound Grips', slot: 'hands', rarity: 'EPIC', statBonus: { str: 6, agi: 2 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-greaves', name: 'Ironbound Greaves', slot: 'legs', rarity: 'EPIC', statBonus: { vit: 5, end: 5 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-sigil', name: 'Ironbound Sigil', slot: 'trinket', rarity: 'EPIC', statBonus: { str: 5, spi: 3 }, setId: IRONBOUND_SET_ID },
+  // NOT part of the set — see SET_BONUS_FULL_PIECES. The weapon slot is left
+  // free on purpose, so the highest-impact item is always a choice rather than
+  // a set requirement.
+  { id: 'ironbound-bar', name: 'Ironbound Bar', slot: 'weapon', rarity: 'RARE', statBonus: { str: 7, vit: 3 } },
+  { id: 'ironbound-helm', name: 'Ironbound Helm', slot: 'head', rarity: 'RARE', statBonus: { vit: 6, foc: 3 }, setId: IRONBOUND_SET_ID },
+  { id: 'ironbound-plate', name: 'Ironbound Plate', slot: 'chest', rarity: 'RARE', statBonus: { vit: 8, str: 2 }, setId: IRONBOUND_SET_ID },
+  { id: 'ironbound-grips', name: 'Ironbound Grips', slot: 'hands', rarity: 'RARE', statBonus: { str: 6, agi: 2 }, setId: IRONBOUND_SET_ID },
+  { id: 'ironbound-greaves', name: 'Ironbound Greaves', slot: 'legs', rarity: 'RARE', statBonus: { vit: 5, end: 5 }, setId: IRONBOUND_SET_ID },
+  { id: 'ironbound-sigil', name: 'Ironbound Sigil', slot: 'trinket', rarity: 'RARE', statBonus: { str: 5, spi: 3 }, setId: IRONBOUND_SET_ID },
 
-  // LEGENDARY — the `windrunner` set. Complete, AGI and END, and at six pieces it converts
+  // EPIC — the `windrunner` set. Complete, AGI and END, and at six pieces it converts
   // real cardio better. The mirror image of `ironbound`, so the two sets pull a player
   // towards two genuinely different training weeks.
-  { id: 'windrunner-baton', name: 'Windrunner Baton', slot: 'weapon', rarity: 'LEGENDARY', statBonus: { agi: 9, end: 4 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-cowl', name: 'Windrunner Cowl', slot: 'head', rarity: 'LEGENDARY', statBonus: { foc: 8, agi: 4 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-shell', name: 'Windrunner Shell', slot: 'chest', rarity: 'LEGENDARY', statBonus: { end: 9, vit: 4 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-mitts', name: 'Windrunner Mitts', slot: 'hands', rarity: 'LEGENDARY', statBonus: { agi: 8, str: 3 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-striders', name: 'Windrunner Striders', slot: 'legs', rarity: 'LEGENDARY', statBonus: { agi: 7, end: 7 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-compass', name: 'Windrunner Compass', slot: 'trinket', rarity: 'LEGENDARY', statBonus: { end: 8, spi: 4 }, setId: WINDRUNNER_SET_ID },
+  // Weapon slot deliberately off-set; see the note on `ironbound-bar`.
+  { id: 'windrunner-baton', name: 'Windrunner Baton', slot: 'weapon', rarity: 'EPIC', statBonus: { agi: 9, end: 4 } },
+  { id: 'windrunner-cowl', name: 'Windrunner Cowl', slot: 'head', rarity: 'EPIC', statBonus: { foc: 8, agi: 4 }, setId: WINDRUNNER_SET_ID },
+  { id: 'windrunner-shell', name: 'Windrunner Shell', slot: 'chest', rarity: 'EPIC', statBonus: { end: 9, vit: 4 }, setId: WINDRUNNER_SET_ID },
+  { id: 'windrunner-mitts', name: 'Windrunner Mitts', slot: 'hands', rarity: 'EPIC', statBonus: { agi: 8, str: 3 }, setId: WINDRUNNER_SET_ID },
+  { id: 'windrunner-striders', name: 'Windrunner Striders', slot: 'legs', rarity: 'EPIC', statBonus: { agi: 7, end: 7 }, setId: WINDRUNNER_SET_ID },
+  { id: 'windrunner-compass', name: 'Windrunner Compass', slot: 'trinket', rarity: 'EPIC', statBonus: { end: 8, spi: 4 }, setId: WINDRUNNER_SET_ID },
 
-  // MYTHIC — drop-only, unpriced, and deliberately NOT a set: it is the reward for years of
+  // LEGENDARY — drop-only, unpriced, and deliberately NOT a set: it is the reward for years of
   // real training, not the completion of a collection. Three pieces only, so the tier stays
-  // rare in fact and not just in its weight.
-  { id: 'atlas-bar', name: 'Atlas Bar', slot: 'weapon', rarity: 'MYTHIC', statBonus: { str: 14, vit: 6 } },
-  { id: 'aegis-of-the-long-haul', name: 'Aegis of the Long Haul', slot: 'chest', rarity: 'MYTHIC', statBonus: { vit: 14, end: 8 } },
-  { id: 'metronome-of-the-sixth-set', name: 'Metronome of the Sixth Set', slot: 'trinket', rarity: 'MYTHIC', statBonus: { foc: 10, spi: 10 } },
+  // uncommon in fact and not just in its weight.
+  { id: 'atlas-bar', name: 'Atlas Bar', slot: 'weapon', rarity: 'LEGENDARY', statBonus: { str: 14, vit: 6 } },
+  { id: 'aegis-of-the-long-haul', name: 'Aegis of the Long Haul', slot: 'chest', rarity: 'LEGENDARY', statBonus: { vit: 14, end: 8 } },
+  { id: 'metronome-of-the-sixth-set', name: 'Metronome of the Sixth Set', slot: 'trinket', rarity: 'LEGENDARY', statBonus: { foc: 10, spi: 10 } },
 ];
 
 /**

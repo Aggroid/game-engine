@@ -13,7 +13,7 @@
  *
  * THE DROP TABLE IS THE CATALOGUE, bucketed by rarity. One table, not two: a separate drop
  * table would immediately drift from the catalogue, and the first symptom would be a
- * legendary that can drop but cannot be looked up.
+ * epic that can drop but cannot be looked up.
  */
 import type { Item, Rarity } from '../contracts/types';
 import { RARITIES } from '../contracts/types';

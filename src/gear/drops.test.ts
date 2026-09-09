@@ -41,9 +41,9 @@ describe('the drop pools', () => {
   });
 
   it('filter to what the hero can actually wear', () => {
-    expect(eligibleDrops('LEGENDARY', 1)).toEqual([]);
-    expect(eligibleDrops('LEGENDARY', LEVEL_REQUIREMENT_BY_RARITY.LEGENDARY).length).toBeGreaterThan(0);
-    expect(eligibleDrops('COMMON', 1).length).toBeGreaterThan(0);
+    expect(eligibleDrops('EPIC', 1)).toEqual([]);
+    expect(eligibleDrops('EPIC', LEVEL_REQUIREMENT_BY_RARITY.EPIC).length).toBeGreaterThan(0);
+    expect(eligibleDrops('POOR', 1).length).toBeGreaterThan(0);
   });
 });
 
@@ -77,7 +77,7 @@ describe('rollDrop determinism', () => {
 describe('rollDrop rarity distribution', () => {
   it('roughly matches the configured weights over many rolls', () => {
     const rng = createRandom(4242);
-    const counts: Record<Rarity, number> = { COMMON: 0, RARE: 0, EPIC: 0, LEGENDARY: 0, MYTHIC: 0 };
+    const counts: Record<Rarity, number> = { POOR: 0, UNCOMMON: 0, RARE: 0, EPIC: 0, LEGENDARY: 0 };
 
     for (let i = 0; i < DISTRIBUTION_ROLLS; i += 1) {
       const item = rollDrop(rng, MAX_LEVEL);
@@ -94,23 +94,23 @@ describe('rollDrop rarity distribution', () => {
 
   it('honours a caller override, keeping defaults for the rarities left out', () => {
     const rng = createRandom(99);
-    const bossChest = { LEGENDARY: 1000 };
+    const bossChest = { EPIC: 1000 };
     const drops = Array.from({ length: 200 }, () => rollDrop(rng, MAX_LEVEL, bossChest));
 
-    const legendary = drops.filter((item) => item?.rarity === 'LEGENDARY').length;
+    const epic = drops.filter((item) => item?.rarity === 'EPIC').length;
     // 1000 against the default 100 or so: almost everything, but the other tiers still exist.
-    expect(legendary).toBeGreaterThan(180);
-    expect(legendary).toBeLessThan(200);
+    expect(epic).toBeGreaterThan(180);
+    expect(epic).toBeLessThan(200);
   });
 
   it('lets a caller exclude a tier entirely by zeroing its weight', () => {
     const rng = createRandom(5);
     const drops = Array.from({ length: 500 }, () =>
-      rollDrop(rng, MAX_LEVEL, { COMMON: 0, RARE: 0 }),
+      rollDrop(rng, MAX_LEVEL, { POOR: 0, UNCOMMON: 0 }),
     );
 
-    expect(drops.some((item) => item?.rarity === 'COMMON')).toBe(false);
-    expect(drops.some((item) => item?.rarity === 'RARE')).toBe(false);
+    expect(drops.some((item) => item?.rarity === 'POOR')).toBe(false);
+    expect(drops.some((item) => item?.rarity === 'UNCOMMON')).toBe(false);
     expect(drops.every((item) => item !== null)).toBe(true);
   });
 
@@ -120,7 +120,7 @@ describe('rollDrop rarity distribution', () => {
       calls += 1;
       return 0.5;
     };
-    const noWeights = { COMMON: 0, RARE: 0, EPIC: 0, LEGENDARY: 0, MYTHIC: 0 };
+    const noWeights = { POOR: 0, UNCOMMON: 0, RARE: 0, EPIC: 0, LEGENDARY: 0 };
 
     expect(rollDrop(rng, MAX_LEVEL, noWeights)).toBeNull();
     expect(calls).toBe(0);
@@ -129,15 +129,15 @@ describe('rollDrop rarity distribution', () => {
   it('survives an out-of-contract rng that returns exactly 1', () => {
     const dropped = rollDrop(() => 1, MAX_LEVEL);
     // The tail of both draws: the last weighted rarity, and the last item in its pool.
-    const mythic = DROP_POOL_BY_RARITY.MYTHIC;
-    expect(dropped).toBe(mythic[mythic.length - 1]);
+    const legendary = DROP_POOL_BY_RARITY.LEGENDARY;
+    expect(dropped).toBe(legendary[legendary.length - 1]);
   });
 });
 
 describe('rollDrop level gating', () => {
   it('never hands a level 1 hero a level 18 item', () => {
-    const legendary = itemById('windrunner-baton') as Item;
-    expect(legendary.levelRequirement).toBe(18);
+    const epic = itemById('windrunner-baton') as Item;
+    expect(epic.levelRequirement).toBe(18);
 
     const drops = roll(31337, 5000, 1);
     for (const item of drops) {
@@ -145,19 +145,19 @@ describe('rollDrop level gating', () => {
         expect(item.levelRequirement).toBeLessThanOrEqual(1);
       }
     }
-    expect(drops).not.toContain(legendary);
+    expect(drops).not.toContain(epic);
   });
 
   it('returns null rather than falling back to a tier the hero has outgrown', () => {
-    // A legendary rolled by a level 1 hero drops nothing at all: falling back to a common
+    // A epic rolled by a level 1 hero drops nothing at all: falling back to a poor
     // would quietly make the low-level distribution richer than the weights say.
-    expect(rollDrop(() => 0, 1, { COMMON: 0, RARE: 0, EPIC: 0, LEGENDARY: 1, MYTHIC: 0 })).toBeNull();
+    expect(rollDrop(() => 0, 1, { POOR: 0, UNCOMMON: 0, RARE: 0, EPIC: 1, LEGENDARY: 0 })).toBeNull();
   });
 
   it('yields something for a level 1 hero more often than not', () => {
     const drops = roll(11, 1000, 1);
     const found = drops.filter((item) => item !== null).length;
-    // COMMON alone is 60% of the weight, and every common is level 1.
+    // POOR alone is 60% of the weight, and every poor is level 1.
     expect(found).toBeGreaterThan(500);
   });
 

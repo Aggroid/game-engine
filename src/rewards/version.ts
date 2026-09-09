@@ -40,5 +40,26 @@
  *          the time, which is why both are stored alongside the activity and not recomputed.
  *          Gear STAT bonuses are deliberately not part of this: they are a combat projection
  *          (see `applyGear`), never a reward multiplier, so they leave the ledger alone.
+ *
+ *   0.3.0  GEAR BECAME INSTANCED, and the rarity ladder was renamed. The EP formula itself
+ *          is UNCHANGED — no ledger row scores differently under 0.3.0 than it did under
+ *          0.2.0 — but three things that gear-derived rows depend on moved:
+ *            - RARITY RENAME. `COMMON RARE EPIC LEGENDARY MYTHIC` became
+ *              `POOR UNCOMMON RARE EPIC LEGENDARY`, a POSITIONAL remap onto the WoW ladder
+ *              (gray, green, blue, purple, orange). Every tier kept its weight and its
+ *              position; only the names changed. Note the trap this leaves for anyone
+ *              reading old data: the string "RARE" means the SECOND tier before 0.3.0 and
+ *              the THIRD tier after it. Rarity is not persisted, so there was nothing to
+ *              migrate — but a stored value from an external export would be misread.
+ *            - ROLLED INSTANCES. A drop is no longer a catalogue entry; it is a `RolledItem`
+ *              with its own stat budget, quality in [0.75, 1.00] and seed. Two drops of the
+ *              same template now differ, which is what makes an auction house able to
+ *              discover a price. Tier budgets deliberately OVERLAP between UNCOMMON, RARE
+ *              and EPIC so a good blue can beat a bad purple; POOR and LEGENDARY sit
+ *              outside that overlap on purpose.
+ *            - FULL SETS BECAME FIVE PIECES, not six, and the weapon slot left every set.
+ *              A hero who had all six pieces of a set under 0.2.0 still holds both bonus
+ *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
+ *              weapon they were wearing no longer counts toward it.
  */
-export const ENGINE_VERSION = '0.2.0';
+export const ENGINE_VERSION = '0.3.0';

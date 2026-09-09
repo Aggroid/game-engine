@@ -11,3 +11,4 @@ export * from './catalogue';
 export * from './setBonuses';
 export * from './equip';
 export * from './drops';
+export * from './roll';
