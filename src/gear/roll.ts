@@ -42,6 +42,9 @@
 import { createRng } from '../battle/prng';
 import { STAT_KEYS, type Item, type Rarity, type StatKey } from '../contracts/types';
 import {
+  REROLL_COST_ESCALATION,
+  REROLL_COST_MULTIPLIER_BY_RARITY,
+  REROLL_GOLD_PER_ITEM_LEVEL,
   ROLL_QUALITY_MAX,
   ROLL_QUALITY_MIN,
   STAT_BUDGET_PER_ITEM_LEVEL,
@@ -97,20 +100,41 @@ export function statBudgetFor(itemLevel: number, rarity: Rarity): number {
  * @param seed       Anything deterministic. In practice the battle seed mixed
  *                   with the drop index, so two drops in one fight differ.
  */
-export function rollItem(template: Item, itemLevel: number, seed: number): RolledItem {
+/**
+ * The roll itself: tier and item level in, stats and quality out.
+ *
+ * Shared by `rollItem` and `rerollItem` so the two cannot drift. If a drop and a
+ * re-roll used different maths, a re-rolled item would be distinguishable from a
+ * dropped one — and the whole promise of a re-roll is that it gives you the item
+ * you could have found.
+ *
+ * THE RNG DRAW ORDER IS PART OF THE SEED CONTRACT: quality, then stat count,
+ * then which stats, then the split. Reordering it silently changes every future
+ * roll and every re-roll.
+ */
+function rollStats(
+  rarity: Rarity,
+  itemLevel: number,
+  seed: number,
+): { statBonus: Partial<Record<StatKey, number>>; quality: number } {
   const rng = createRng(seed);
 
   // DRAW 1 — quality. First so that adding stats later cannot shift it.
   const quality = ROLL_QUALITY_MIN + rng() * (ROLL_QUALITY_MAX - ROLL_QUALITY_MIN);
 
   // DRAW 2 — how many stats this instance carries.
-  const [minStats, maxStats] = STAT_COUNT_BY_RARITY[template.rarity];
+  const [minStats, maxStats] = STAT_COUNT_BY_RARITY[rarity];
   const statCount = minStats + Math.floor(rng() * (maxStats - minStats + 1));
 
   // DRAW 3.. — which stats, then how the budget splits between them.
   const chosen = pickStats(statCount, rng);
-  const budget = Math.floor(statBudgetFor(itemLevel, template.rarity) * quality);
-  const statBonus = allocate(budget, chosen, rng);
+  const budget = Math.floor(statBudgetFor(itemLevel, rarity) * quality);
+
+  return { statBonus: allocate(budget, chosen, rng), quality };
+}
+
+export function rollItem(template: Item, itemLevel: number, seed: number): RolledItem {
+  const { statBonus, quality } = rollStats(template.rarity, itemLevel, seed);
 
   return {
     itemId: template.id,
@@ -214,4 +238,86 @@ function allocate(
  */
 export function totalStats(item: RolledItem): number {
   return Object.values(item.statBonus).reduce((sum, value) => sum + (value ?? 0), 0);
+}
+
+/**
+ * Re-rolls an item's stats for gold.
+ *
+ * ============================================================================
+ * GOLD BUYS VARIANCE, NEVER POWER. This is the property that makes the whole
+ * mechanic safe, and everything else here follows from it.
+ * ============================================================================
+ *
+ * The tier and the item level do NOT change, so the stat BUDGET does not change.
+ * A re-rolled EPIC is still an EPIC of the same item level: gold can turn a bad
+ * roll into a good one, and can never turn a blue into a purple or raise the
+ * ceiling that fighting set. "Your real training is the grind" survives, because
+ * the thing gold cannot buy is the thing that actually gates power.
+ *
+ * WHY THIS IS THE GOLD SINK THE GAME NEEDS. The auction-house cut only removes a
+ * fraction of what CHANGES HANDS, while supply grows with every session — at
+ * WEEKLY_HARD_CAP_EP and GOLD_PER_EP a maxed player mints 1,000 gold a week
+ * forever, and would have to trade twenty times that for a 5% cut to keep up.
+ * Re-rolling drains instead in proportion to how much gold somebody HAS: it is
+ * unbounded, it is optional, and it stops being worth doing on its own, because
+ * `rerollCost` climbs with every attempt on the same item.
+ *
+ * IT ALWAYS REPLACES. The new roll stands even when it is worse, and that is
+ * deliberate: an option that only ever improves an item is not a sink, it is a
+ * delay before everybody owns a perfect one. The consequence is that players
+ * with good rolls rationally never re-roll, which is correct — the mechanic is
+ * for the 0.76 purples, and it turns those from junk into lottery tickets. That
+ * is also what gives cheap high-tier items a real market.
+ *
+ * A NOTE ON WHAT THIS IS, LEGALLY. Spending currency for a random outcome is
+ * loot-box-shaped. It is fine while gold cannot be bought with money — and it
+ * becomes a disclosable loot box the day it can. If a premium tier ever sells
+ * gold, this mechanic is the reason that decision needs its own look. The
+ * quality band is deliberately public (`ROLL_QUALITY_MIN`/`MAX`) so the odds can
+ * always be shown rather than inferred.
+ *
+ * @param current The item as owned now. Its identity, tier, item level and set
+ *                membership all survive; only the stats and quality move.
+ * @param seed    Deterministic, supplied by the caller. In practice derived from
+ *                the previous `rollSeed` and the attempt number, so a re-roll is
+ *                reproducible from the row and a retried request cannot re-roll
+ *                into something better.
+ */
+export function rerollItem(current: RolledItem, seed: number): RolledItem {
+  const { statBonus, quality } = rollStats(current.rarity, current.itemLevel, seed);
+
+  return {
+    ...current,
+    statBonus,
+    quality,
+    rollSeed: seed,
+  };
+}
+
+/**
+ * What the next re-roll of an item costs.
+ *
+ * THREE TERMS, and the third is the one that matters:
+ *
+ *   ITEM LEVEL   a level-40 item costs more to re-roll than a level-5 one,
+ *                because it is worth more.
+ *   RARITY       a purple costs more than a green, for the same reason.
+ *   ATTEMPTS     multiplied by REROLL_COST_ESCALATION for every previous
+ *                re-roll of THIS item.
+ *
+ * Without escalation the mechanic breaks completely: a wealthy player would
+ * simply re-roll fifty times and hold a guaranteed 1.00 roll, which converts
+ * gold straight into power and makes every rolled item eventually perfect. With
+ * it, chasing a top roll gets expensive faster than it gets likely — the tenth
+ * attempt costs about 60x the first — so people stop where the marginal gain
+ * stops being worth it, and the sink self-balances with no cap to tune.
+ *
+ * @param attemptsSoFar How many times this item has already been re-rolled.
+ */
+export function rerollCost(rarity: Rarity, itemLevel: number, attemptsSoFar: number): number {
+  const base = Math.max(1, itemLevel) * REROLL_GOLD_PER_ITEM_LEVEL;
+  const tier = REROLL_COST_MULTIPLIER_BY_RARITY[rarity];
+  const escalation = REROLL_COST_ESCALATION ** Math.max(0, attemptsSoFar);
+
+  return Math.ceil(base * tier * escalation);
 }

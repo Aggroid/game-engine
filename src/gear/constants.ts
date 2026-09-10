@@ -250,3 +250,54 @@ export const PVP_LEVEL_BAND = DROP_BAND_ABOVE;
  * them, which is both the least interesting way to play and miserable for them.
  */
 export const PVP_REMATCH_COOLDOWN_HOURS = 6;
+
+/* -------------------------------------------------------------------------- *
+ * Re-rolling — the gold sink
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Gold per point of item level, before the tier multiplier.
+ *
+ * PROVISIONAL and consequential: this sets whether re-rolling is a meaningful
+ * drain or a rounding error. The number that matters is the ratio to INCOME. At
+ * `WEEKLY_HARD_CAP_EP` and `GOLD_PER_EP` a maxed player mints 1,000 gold a week,
+ * so at 8 gold per item level a single re-roll of a level-20 EPIC costs roughly
+ * 380 — about a third of a hard week. That feels like the right order: worth
+ * doing for an item you care about, not something to spam.
+ *
+ * Belongs in the M0 spreadsheet (story 3) like every other tuning value here.
+ */
+export const REROLL_GOLD_PER_ITEM_LEVEL = 8;
+
+/**
+ * How much more a higher tier costs to re-roll.
+ *
+ * Tracks the stat-budget multipliers rather than being invented separately: a
+ * tier that carries more stat is worth more to improve, and keeping the two
+ * curves aligned means the cost per point of expected gain stays roughly flat
+ * across tiers. POOR and LEGENDARY are present but unreachable in practice —
+ * neither is tradeable, and neither is worth re-rolling — so they are priced
+ * consistently rather than specially.
+ */
+export const REROLL_COST_MULTIPLIER_BY_RARITY: Readonly<Record<Rarity, number>> = {
+  POOR: 0.5,
+  UNCOMMON: 1.0,
+  RARE: 1.6,
+  EPIC: 2.4,
+  LEGENDARY: 4.0,
+};
+
+/**
+ * Cost multiplier per previous re-roll of the SAME item.
+ *
+ * THE MECHANIC DOES NOT WORK WITHOUT THIS. At a flat cost, a wealthy player
+ * re-rolls fifty times, keeps a guaranteed 1.00 roll, and gold has bought power
+ * — which is exactly what `rerollItem` exists to prevent. At 1.55x per attempt
+ * the tenth costs about 60x the first, so chasing a perfect roll gets expensive
+ * faster than it gets likely.
+ *
+ * Uncapped on purpose. A cap would be a price at which perfection becomes
+ * routine for anybody patient enough, and there is no such price that is also
+ * affordable early.
+ */
+export const REROLL_COST_ESCALATION = 1.55;

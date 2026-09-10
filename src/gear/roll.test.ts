@@ -3,7 +3,7 @@ import {
   ROLL_QUALITY_MIN,
   STAT_COUNT_BY_RARITY,
 } from './constants';
-import { rollItem, statBudgetFor, totalStats } from './roll';
+import { rerollCost, rerollItem, rollItem, statBudgetFor, totalStats } from './roll';
 import { RARITIES, type Item, type Rarity } from '../contracts/types';
 
 /**
@@ -189,5 +189,132 @@ describe('set membership survives the roll', () => {
 
   it('omits it entirely when the template has none', () => {
     expect(rollItem(template(), 20, 1).setId).toBeUndefined();
+  });
+});
+
+describe('rerolling for gold', () => {
+  const EPIC = template({ rarity: 'EPIC', setId: 'set-ironbound' });
+
+  /**
+   * THE PROPERTY THE WHOLE MECHANIC RESTS ON. Gold buys variance, never power.
+   * If a re-roll could change the tier or the item level it would raise the
+   * ceiling that FIGHTING set, and "your real training is the grind" would stop
+   * being true the moment somebody was rich.
+   */
+  it('keeps tier, item level and identity — only the stats move', () => {
+    const original = rollItem(EPIC, 20, 1);
+    const rerolled = rerollItem(original, 999);
+
+    expect(rerolled.rarity).toBe(original.rarity);
+    expect(rerolled.itemLevel).toBe(original.itemLevel);
+    expect(rerolled.levelRequirement).toBe(original.levelRequirement);
+    expect(rerolled.itemId).toBe(original.itemId);
+    expect(rerolled.name).toBe(original.name);
+    expect(rerolled.slot).toBe(original.slot);
+    expect(rerolled.setId).toBe(original.setId);
+  });
+
+  it('never exceeds the budget the tier and item level allow', () => {
+    for (let seed = 1; seed <= 300; seed += 1) {
+      const rerolled = rerollItem(rollItem(EPIC, 20, 1), seed);
+      expect(totalStats(rerolled)).toBeLessThanOrEqual(statBudgetFor(20, 'EPIC'));
+    }
+  });
+
+  it('produces a genuinely different roll', () => {
+    const original = rollItem(EPIC, 20, 1);
+    const outcomes = new Set(
+      Array.from({ length: 50 }, (_, seed) =>
+        JSON.stringify(rerollItem(original, seed + 1000).statBonus),
+      ),
+    );
+    expect(outcomes.size).toBeGreaterThan(1);
+  });
+
+  it('is reproducible from its seed, so a re-roll can be audited', () => {
+    const original = rollItem(EPIC, 20, 1);
+    expect(rerollItem(original, 4242)).toEqual(rerollItem(original, 4242));
+    expect(rerollItem(original, 4242).rollSeed).toBe(4242);
+  });
+
+  /**
+   * IT CAN MAKE AN ITEM WORSE, and that is the design. An option that only ever
+   * improves an item is not a sink, it is a delay before everybody owns a
+   * perfect one.
+   */
+  it('can roll worse than what you had', () => {
+    const good = rollItem(EPIC, 20, 1);
+    const outcomes = Array.from({ length: 200 }, (_, seed) =>
+      totalStats(rerollItem(good, seed + 1)),
+    );
+    expect(Math.min(...outcomes)).toBeLessThan(totalStats(good));
+  });
+
+  it('rolls inside the same quality band as a fresh drop', () => {
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const { quality } = rerollItem(rollItem(EPIC, 20, 1), seed);
+      expect(quality).toBeGreaterThanOrEqual(ROLL_QUALITY_MIN);
+      expect(quality).toBeLessThanOrEqual(ROLL_QUALITY_MAX);
+    }
+  });
+
+  /**
+   * A re-roll must be INDISTINGUISHABLE from a drop. If the two used different
+   * maths, a re-rolled item would be identifiable — and the promise of a re-roll
+   * is that it gives you the item you could have found.
+   */
+  it('is statistically the same as dropping the item fresh', () => {
+    const original = rollItem(EPIC, 20, 1);
+
+    const fromDrops = Array.from({ length: 400 }, (_, seed) =>
+      totalStats(rollItem(EPIC, 20, seed + 1)),
+    );
+    const fromRerolls = Array.from({ length: 400 }, (_, seed) =>
+      totalStats(rerollItem(original, seed + 1)),
+    );
+
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    // Same generator, same inputs, so the same seeds give the same totals.
+    expect(mean(fromRerolls)).toBeCloseTo(mean(fromDrops), 5);
+  });
+});
+
+describe('rerollCost', () => {
+  it('rises with item level and with tier', () => {
+    expect(rerollCost('EPIC', 40, 0)).toBeGreaterThan(rerollCost('EPIC', 20, 0));
+    expect(rerollCost('EPIC', 20, 0)).toBeGreaterThan(rerollCost('UNCOMMON', 20, 0));
+  });
+
+  /**
+   * THE ANTI-ABUSE PROPERTY, and the mechanic does not work without it. At a
+   * flat cost a wealthy player re-rolls fifty times, keeps a guaranteed 1.00
+   * roll, and gold has bought power — exactly what re-rolling exists to prevent.
+   */
+  it('escalates steeply with every attempt on the same item', () => {
+    const first = rerollCost('EPIC', 20, 0);
+    const tenth = rerollCost('EPIC', 20, 9);
+
+    expect(tenth).toBeGreaterThan(first * 40);
+  });
+
+  it('is strictly increasing, so patience never gets cheaper', () => {
+    let previous = 0;
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const cost = rerollCost('RARE', 20, attempt);
+      expect(cost).toBeGreaterThan(previous);
+      previous = cost;
+    }
+  });
+
+  it('is always a whole number of gold', () => {
+    for (const rarity of RARITIES) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        expect(Number.isInteger(rerollCost(rarity, 17, attempt))).toBe(true);
+      }
+    }
+  });
+
+  it('treats a negative attempt count as the first attempt', () => {
+    expect(rerollCost('RARE', 20, -5)).toBe(rerollCost('RARE', 20, 0));
   });
 });

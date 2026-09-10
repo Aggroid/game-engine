@@ -62,4 +62,4 @@
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
  */
-export const ENGINE_VERSION = '0.3.0';
+export const ENGINE_VERSION = '0.4.0';
