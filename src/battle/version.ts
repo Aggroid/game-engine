@@ -15,4 +15,20 @@
  * built as ESM, where cycle resolution order differs and `SIM_VERSION` could initialise as
  * `undefined`. A dedicated leaf module removes the failure mode instead of depending on it.
  */
-export const SIM_VERSION = '0.1.0';
+export const SIM_VERSION = '0.2.0';
+
+/*
+ * HISTORY. Each entry is a simulator whose logs can only be re-derived by it.
+ *
+ *  0.1.0  The original turn loop. A duel was run through `simulate` by dressing
+ *         the defender as an `Encounter`, which dropped their `critPct` and
+ *         `regen` — so a defender could never crit and never healed, and AGI
+ *         and SPI were worth nothing to the hero being attacked.
+ *
+ *  0.2.0  `simulateDuel` (`duel.ts`): hero versus hero with both sides' full
+ *         combat sheets. Both crit on their own AGI, both regenerate on their
+ *         own SPI, both draw two RNG values per blow. `simulate` itself is
+ *         UNCHANGED — but the version is shared, so PvE logs written before
+ *         this carry 0.1.0 and are still re-derivable by 0.1.0's `simulate`,
+ *         which is byte-identical to this one.
+ */

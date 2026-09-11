@@ -10,4 +10,5 @@ export { SIM_VERSION } from './version';
 export { createRng } from './prng';
 export { deriveCombat } from './derive';
 export { simulate } from './simulate';
+export { simulateDuel } from './duel';
 export * from './constants';

@@ -535,7 +535,7 @@ exports[`simulate — reproducibility reproduces a losing log too 1`] = `
   ],
   "outcome": "WIN",
   "seed": 5,
-  "simVersion": "0.1.0",
+  "simVersion": "0.2.0",
   "turns": 13,
 }
 `;
@@ -771,7 +771,7 @@ exports[`simulate — reproducibility reproduces a stored log event for event �
   ],
   "outcome": "WIN",
   "seed": 20240817,
-  "simVersion": "0.1.0",
+  "simVersion": "0.2.0",
   "turns": 5,
 }
 `;
