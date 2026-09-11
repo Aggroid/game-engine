@@ -18,6 +18,30 @@
 export const SIM_VERSION = '0.2.0';
 
 /*
+ * ============================================================================
+ * THREE VERSIONS, AND THEY MOVE FOR DIFFERENT REASONS. DO NOT KEEP THEM IN STEP.
+ * ============================================================================
+ *   SIM_VERSION        this file. The battle simulator's OUTPUT.
+ *   ENGINE_VERSION     src/rewards/version.ts. The reward economy, stamped on
+ *                      every ledger row. Must not move for a combat change, or
+ *                      new rows would claim an economy change that never
+ *                      happened.
+ *   package.json       the ARTEFACT. What npm, a lockfile and a build cache
+ *                      identify this package by.
+ *
+ * THE PACKAGE VERSION IS NOT DECORATION, which is what 0.5.0 proved. SIM_VERSION
+ * went 0.1.0 -> 0.2.0 and the git tag went v0.4.0 -> v0.5.0, but package.json
+ * stayed at 0.4.0 — so to every cache the artefact was unchanged. The consumer's
+ * CI restored a cached `@ascend/game-engine@0.4.0`, never rebuilt `dist/` (which
+ * is gitignored and produced by `prepare`), and shipped NEW route code against
+ * an OLD engine. It failed in production as
+ * `TypeError: simulateDuel is not a function`.
+ *
+ * So: any change that alters what this package EXPORTS or EMITS bumps
+ * package.json too, and a tag is never moved once pushed.
+ */
+
+/*
  * HISTORY. Each entry is a simulator whose logs can only be re-derived by it.
  *
  *  0.1.0  The original turn loop. A duel was run through `simulate` by dressing
