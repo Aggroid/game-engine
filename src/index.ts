@@ -30,3 +30,4 @@ export * from './talents';
 export * from './gear';
 export * from './quests';
 export * from './streaks';
+export * from './world';

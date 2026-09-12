@@ -603,6 +603,8 @@ describe('closed lists are exhaustive', () => {
       STAT_FOC: true,
       STAT_SPI: true,
       ITEM_DROP: true,
+      KEY_DROP: true,
+      SIGIL_DROP: true,
     };
 
     expect([...TRUST_TIERS].sort()).toEqual(Object.keys(everyTrustTier).sort());

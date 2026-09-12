@@ -62,6 +62,31 @@
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
  *
+ *   0.10.0   TWO NEW REWARD KINDS: `KEY_DROP` AND `SIGIL_DROP`.
+ *
+ *            The PVE world arrives, and these two rows are the ENTIRE coupling
+ *            between it and training. A key buys one dungeon run; a sigil buys
+ *            one attempt at a zone boss. Both are ordinary append-only integer
+ *            ledger rows, so a balance folds like everything else and is
+ *            re-derivable forever.
+ *
+ *            NOTHING ALREADY WRITTEN MEANS ANYTHING DIFFERENT. No existing row
+ *            changes, no EP formula moved, and no hero's level or stats shift.
+ *            This version exists because rows written from 0.10.0 onward can
+ *            carry kinds no earlier version could produce — a reader of an old
+ *            ledger must be able to know that a missing key row means "this
+ *            engine could not grant one", not "this player never earned one".
+ *
+ *            `rollSessionCurrency` is where they come from: a per-session roll
+ *            whose odds taper with effort, on the same anchor as the gear drop,
+ *            so a ten-minute walk is not the same lottery ticket as an hour
+ *            under the bar. Keys are common by design (a regular trainer always
+ *            has a run available); sigils are deliberately scarce.
+ *
+ *            WHAT THIS VERSION POINTEDLY DOES NOT ADD: any way for PVE to pay
+ *            EP or a stat. Training is the only tap; PVE is the sink. That is
+ *            not a tuning position, it is the premise of the product.
+ *
  *   0.9.0    TRAINING LEADS AGAIN, AND CAN DROP GEAR.
  *
  *            `XP_PER_EP` 1.0 -> 2.0. Real sessions earned 24 to 60 XP while a
@@ -139,4 +164,4 @@
  *            onward can therefore include `XP` entries attributed to a battle,
  *            which no earlier version could produce.
  */
-export const ENGINE_VERSION = '0.9.0';
+export const ENGINE_VERSION = '0.10.0';

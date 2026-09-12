@@ -276,7 +276,26 @@ export type RewardKind =
   | 'STAT_VIT'
   | 'STAT_FOC'
   | 'STAT_SPI'
-  | 'ITEM_DROP';
+  | 'ITEM_DROP'
+  /*
+   * ============================================================================
+   * THE ENTIRE COUPLING BETWEEN TRAINING AND THE PVE WORLD.
+   * ============================================================================
+   * A key buys one dungeon run; a sigil buys one boss attempt. They are ledger
+   * rows like any other — append-only, integer, folded to a balance — so a
+   * player's key count is re-derivable forever and cannot drift from what they
+   * actually earned.
+   *
+   * NOTE WHAT IS NOT HERE, AND WILL NEVER BE: there is no `EP_DROP` and no
+   * `STAT_*` that PVE may write. Training is the only tap; PVE is the sink. The
+   * moment couch-PVE grants power this stops being a fitness game with an RPG
+   * attached and becomes an ordinary mobile RPG that reads a watch.
+   *
+   * These two kinds exist precisely so that PVE has something to spend WITHOUT
+   * having something to earn.
+   */
+  | 'KEY_DROP'
+  | 'SIGIL_DROP';
 
 /** Runtime companion to `RewardKind`. Feeds the zod enum; order is not significant. */
 export const REWARD_KINDS = [
@@ -289,6 +308,8 @@ export const REWARD_KINDS = [
   'STAT_FOC',
   'STAT_SPI',
   'ITEM_DROP',
+  'KEY_DROP',
+  'SIGIL_DROP',
 ] as const;
 
 type _RewardKindsAreExhaustive = [
@@ -712,3 +733,198 @@ type _ActivitySourcesAreExhaustive = [
   AssertAssignable<(typeof ACTIVITY_SOURCES)[number], ActivitySource>,
   AssertAssignable<ActivitySource, (typeof ACTIVITY_SOURCES)[number]>,
 ];
+
+/* -------------------------------------------------------------------------- *
+ * The PVE world
+ *
+ * ============================================================================
+ * THE GOVERNING RULE OF THIS ENTIRE SUBSYSTEM, WRITTEN WHERE IT CANNOT BE MISSED:
+ *
+ *     TRAINING IS THE ONLY TAP. PVE IS THE SINK.
+ *
+ * PVE may pay gold, gear rolls, materials, consumables, keys, sigils, cosmetics
+ * and map progress. PVE may NEVER pay EP or any of the six stats. The moment
+ * couch-PVE grants power, "World of Warcraft, but the grind is your real
+ * training" stops being true and this becomes an ordinary mobile RPG that reads
+ * a watch — competing on content volume against teams of two hundred, having
+ * discarded its only structural advantage.
+ *
+ * The product consequence is the whole point: "I can't beat this boss" must
+ * always resolve to GO TRAIN.
+ *
+ * Nothing in this section can enforce that on its own — it is enforced at the
+ * point rewards are written, in the backend, with a test that names this rule.
+ * It is restated here because this is the file all three repos read.
+ * ============================================================================
+ *
+ * These types are in the CONTRACT rather than in `src/world/` because all three
+ * repos need them: the engine produces a plan, the backend stores its seed and
+ * replays it, and the client renders the forks. `src/world/` keeps only its
+ * private authoring rows, exactly as `src/gear/catalogue.ts` does.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * What one node of a dungeon floor is.
+ *
+ * Deliberately small. Five kinds is enough for the push-or-extract decision to
+ * have texture — fight, hard fight, heal, loot, ambush — and few enough that
+ * every one of them can be rendered as a card with one line of copy.
+ */
+export type NodeKind = 'PACK' | 'ELITE' | 'REST' | 'CACHE' | 'STALKER';
+
+/** Runtime companion to `NodeKind`. Order is display order on the fork. */
+export const NODE_KINDS = ['PACK', 'ELITE', 'REST', 'CACHE', 'STALKER'] as const;
+
+type _NodeKindsAreExhaustive = [
+  AssertAssignable<(typeof NODE_KINDS)[number], NodeKind>,
+  AssertAssignable<NodeKind, (typeof NODE_KINDS)[number]>,
+];
+
+/**
+ * How dangerous one encounter is relative to its floor.
+ *
+ * Separate from `NodeKind` because a node is a PLACE and a rank is a CREATURE:
+ * a `STALKER` node holds one elite, a `PACK` holds several trash, and a boss
+ * site holds a boss. Folding the two together would mean a new node kind could
+ * not reuse an existing difficulty.
+ */
+export type EncounterRank = 'TRASH' | 'ELITE' | 'BOSS';
+
+/** Runtime companion to `EncounterRank`, weakest first. Order is contract. */
+export const ENCOUNTER_RANKS = ['TRASH', 'ELITE', 'BOSS'] as const;
+
+type _EncounterRanksAreExhaustive = [
+  AssertAssignable<(typeof ENCOUNTER_RANKS)[number], EncounterRank>,
+  AssertAssignable<EncounterRank, (typeof ENCOUNTER_RANKS)[number]>,
+];
+
+/**
+ * A promise of a fight, not the fight itself.
+ *
+ * WHY A SPEC AND NOT AN `Encounter`: a plan is generated once and stored as a
+ * seed, then re-derived every time the run is read. If the plan embedded rolled
+ * numbers, the stored seed would have to reproduce the ROLL as well as the
+ * layout, and any retune of the depth curve would silently change fights that
+ * were already half-fought. A spec names WHAT is there; `rollEncounter` decides
+ * how hard it is, at the moment it is fought, from the same seed.
+ */
+export interface EncounterSpec {
+  /** Unique within its run. Becomes `Encounter.id`, and so `BattleLog.encounterId`. */
+  id: string;
+  /** Catalogue mob id this is rolled from. */
+  mobId: string;
+  rank: EncounterRank;
+}
+
+/** One fork option on a floor. */
+export interface NodePlan {
+  /** Unique within its plan. What `choosePath(runId, nodeId)` names. */
+  id: string;
+  kind: NodeKind;
+  /**
+   * The fights behind this node, in order, fought back to back with HP carried
+   * forward. Empty for `REST` and `CACHE` — a node that pays without a fight is
+   * the reason push-or-extract is a decision rather than an arithmetic problem.
+   */
+  encounterSpecs: EncounterSpec[];
+}
+
+/** One floor: a depth, and the two or three doors out of it. */
+export interface FloorPlan {
+  /** 1-based. Feeds the depth curve; floor 1 is the mildest. */
+  depth: number;
+  nodes: NodePlan[];
+}
+
+/**
+ * A whole dungeon, as data.
+ *
+ * A PURE FUNCTION of `(zoneId, tier, affixes, seed)` — the same guarantee daily
+ * quests and gear drops already give. Given a stored seed the entire dungeon
+ * re-derives identically, forever, so the backend stores four small fields
+ * rather than a serialised map, and a run that is resumed on another device
+ * cannot disagree about what was behind the left-hand door.
+ */
+export interface DungeonPlan {
+  zoneId: string;
+  /** Difficulty step. Higher tiers are deeper and hit harder, never wider. */
+  tier: number;
+  /** The affixes in force, by id. Order is the order they were selected in. */
+  affixes: string[];
+  floors: FloorPlan[];
+}
+
+/**
+ * A zone: the authoring unit of the world.
+ *
+ * Each zone costs one trash table, two or three named rares, one authored boss
+ * and one dungeon theme. Five zones is a complete world, which is the entire
+ * reason the shape is this rigid — a zone that could be "a bit different" is a
+ * zone that has to be designed rather than filled in.
+ */
+export interface Zone {
+  id: string;
+  name: string;
+  /** One or two sentences of tone. Rendered; never parsed. */
+  description: string;
+  /** Inclusive level band this zone is authored for. */
+  levelMin: number;
+  levelMax: number;
+  /** The trash table. Rolled for Wilds sweeps and for dungeon `PACK` nodes. */
+  trashMobIds: readonly string[];
+  /** Named rares that spawn on per-player windows. */
+  rareIds: readonly string[];
+  /** The one authored boss. Killing it is what unlocks `nextZoneId`. */
+  bossId: string;
+  /** Flavour for the generated dungeon in this zone. */
+  dungeonName: string;
+  /** The zone this one's boss unlocks. Absent on the last zone in the chain. */
+  nextZoneId?: string;
+}
+
+/**
+ * One phase of an authored boss.
+ *
+ * PHASES ARE DATA AND ARE RESOLVED AS A CHAIN OF `simulate()` CALLS. No phase
+ * logic enters the simulator: `bossPhaseEncounters` projects a boss into one
+ * `Encounter` per phase, and the caller fights them in order carrying hero HP
+ * forward. That keeps multi-phase bosses out of `SIM_VERSION` entirely — a boss
+ * can be retuned, or gain a phase, without making a single historical battle
+ * log unreplayable.
+ */
+export interface BossPhase {
+  /** Rendered above the health bar. "Enraged", "The Second Breath". */
+  name: string;
+  /**
+   * Share of the boss's total health this phase is worth, in `(0, 1]`.
+   *
+   * A share rather than a threshold because each phase is a SEPARATE battle: the
+   * chain needs to know how much HP to give this phase, not when to interrupt a
+   * fight that the simulator has no way to interrupt. Shares across a boss's
+   * phases sum to 1 — asserted in the catalogue, not hoped for.
+   */
+  hpShare: number;
+  /** Multiplies the boss's base attack for this phase. 1 is unchanged. */
+  attackMultiplier: number;
+  /** Multiplies the boss's base defence for this phase. 1 is unchanged. */
+  defenceMultiplier: number;
+}
+
+/**
+ * An affix: one line of data that changes how a whole week of dungeons feels.
+ *
+ * THE HIGHEST-LEVERAGE ITEM IN THE WORLD DESIGN. Ten affixes across five zones
+ * with procedural floors produce a world that does not repeat, for roughly two
+ * evenings of work — which is the mechanism by which one developer out-produces
+ * a content team on perceived volume.
+ *
+ * Selection for a week is a PURE FUNCTION of `(weekKey, zoneId)`, so the
+ * rotation needs no live-ops action, no scheduled job and no stored state, and
+ * two clients looking at the same week cannot disagree about what is in force.
+ */
+export interface Affix {
+  id: string;
+  name: string;
+  /** Player-facing copy. The client renders this; it never maps ids to strings. */
+  description: string;
+}
