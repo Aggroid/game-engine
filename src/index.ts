@@ -26,6 +26,7 @@
 export * from './contracts';
 export * from './rewards';
 export * from './battle';
+export * from './talents';
 export * from './gear';
 export * from './quests';
 export * from './streaks';

@@ -13,12 +13,20 @@
  * `applyGear`). Passing no equipment derives an unequipped hero, which is exactly what the
  * single-argument call has always meant.
  */
-import type { DerivedCombat, EquippedItems, Hero } from '../contracts/types';
+import type { DerivedCombat, EquippedItems, Hero, StatBlock } from '../contracts/types';
+import { withTalentCombat, withTalentStats } from '../talents/apply';
+import type { TalentAllocation } from '../talents/types';
 import { applyGear } from '../gear/equip';
 import {
   ATTACK_BASE,
   ATTACK_PER_PRIMARY,
+  CLASS_BASE_STATS,
   CLASS_PRIMARY_STAT,
+  ATTACK_PER_LEVEL,
+  DEFENCE_PER_LEVEL,
+  DODGE_PCT_BASE,
+  DODGE_PCT_MAX,
+  DODGE_PCT_PER_AGI,
   CRIT_PCT_MAX,
   CRIT_PCT_PER_AGI,
   DEFENCE_PER_VIT,
@@ -55,21 +63,66 @@ function toStat(value: number): number {
  *                 one-argument call is unchanged and still means exactly what it always did.
  * @returns Freshly derived combat values. Never cached, never written back to the hero.
  */
-export function deriveCombat(hero: Hero, equipped?: EquippedItems): DerivedCombat {
-  const stats = equipped === undefined ? hero.stats : applyGear(hero.stats, equipped);
+export function deriveCombat(
+  hero: Hero,
+  equipped?: EquippedItems,
+  /**
+   * The hero's talent build. Omit for an untalented derivation — the one- and
+   * two-argument calls are unchanged and still mean exactly what they did.
+   */
+  allocation?: TalentAllocation,
+): DerivedCombat {
+  /*
+   * THREE SOURCES OF STATS, IN ORDER, and the order is the contract:
+   *   class base   what you start as
+   *   earned       what you trained for
+   *   gear         what you are wearing
+   *   talents      what you chose
+   *
+   * Talents add to the stat line rather than to the derived numbers, so a
+   * talent's +3 STR behaves exactly like +3 STR that was trained for. A bonus
+   * that meant something different depending on where it came from would make
+   * every later balance question start with "which kind of STR?".
+   */
+  const base = CLASS_BASE_STATS[hero.heroClass];
+  const earned: StatBlock = {
+    str: hero.stats.str + base.str,
+    agi: hero.stats.agi + base.agi,
+    end: hero.stats.end + base.end,
+    vit: hero.stats.vit + base.vit,
+    foc: hero.stats.foc + base.foc,
+    spi: hero.stats.spi + base.spi,
+  };
+
+  const geared = equipped === undefined ? earned : applyGear(earned, equipped);
+  const stats = allocation === undefined ? geared : withTalentStats(geared, allocation);
   const primaryStat = CLASS_PRIMARY_STAT[hero.heroClass];
 
-  return {
+  const combat: DerivedCombat = {
     // VIT and level both buy survivability so that levelling feels like progress even in a
     // week where the player earned no VIT at all.
     hp: toStat(HP_BASE + stats.vit * HP_PER_VIT + hero.level * HP_PER_LEVEL),
-    // The ONLY place class changes the maths: attack scales off the class primary stat.
-    attack: toStat(ATTACK_BASE + stats[primaryStat] * ATTACK_PER_PRIMARY),
-    defence: toStat(stats.vit * DEFENCE_PER_VIT),
+    /*
+     * LEVEL NOW MOVES ATTACK AND DEFENCE TOO. Before 0.6.0 it bought HP alone,
+     * so a level-20 hit exactly as hard as a level-1 with the same stats — the
+     * reason duels across levels felt like a coin flip. Kept small against the
+     * stat coefficients: training is the game, level is the floor under it.
+     */
+    attack: toStat(
+      ATTACK_BASE + stats[primaryStat] * ATTACK_PER_PRIMARY + hero.level * ATTACK_PER_LEVEL,
+    ),
+    defence: toStat(stats.vit * DEFENCE_PER_VIT + hero.level * DEFENCE_PER_LEVEL),
     // Percentage points, may be fractional (per the contract), and capped so that an
     // all-AGI build reaches a ceiling instead of critting on every swing.
     critPct: Math.min(CRIT_PCT_MAX, Math.max(0, stats.agi * CRIT_PCT_PER_AGI)),
     regen: toStat(stats.spi * REGEN_PER_SPI),
     stamina: toStat(STAMINA_BASE + stats.end * STAMINA_PER_END),
+    // Capped below the crit ceiling: a fight nobody can land a blow in is not a fight.
+    dodgePct: Math.min(
+      DODGE_PCT_MAX,
+      Math.max(0, DODGE_PCT_BASE + stats.agi * DODGE_PCT_PER_AGI),
+    ),
   };
+
+  return allocation === undefined ? combat : withTalentCombat(combat, allocation);
 }

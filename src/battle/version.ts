@@ -15,7 +15,7 @@
  * built as ESM, where cycle resolution order differs and `SIM_VERSION` could initialise as
  * `undefined`. A dedicated leaf module removes the failure mode instead of depending on it.
  */
-export const SIM_VERSION = '0.2.0';
+export const SIM_VERSION = '0.3.0';
 
 /*
  * ============================================================================

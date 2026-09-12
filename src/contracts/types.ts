@@ -373,6 +373,15 @@ export interface DerivedCombat {
   defence: number;
   /** Critical hit chance in PERCENTAGE POINTS (0..100, e.g. `7.5` means 7.5%), from AGI. May be fractional. */
   critPct: number;
+  /**
+   * Chance to avoid a blow entirely, in percentage points.
+   *
+   * Added in ENGINE_VERSION 0.6.0. OPTIONAL on the contract so a stored
+   * `heroSnapshot` written before it still parses — an old battle must stay
+   * replayable, and a required field would make every pre-0.6.0 snapshot
+   * invalid the moment it was read back.
+   */
+  dodgePct?: number;
   /** Hit points recovered per turn, from SPI. Integer. */
   regen: number;
   /** Turns sustainable before fatigue, from END. Integer. */

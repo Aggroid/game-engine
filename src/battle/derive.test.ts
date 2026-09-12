@@ -5,6 +5,7 @@
  */
 import {
   HERO_CLASSES,
+  STAT_KEYS,
   type EquippedItems,
   type Hero,
   type HeroClass,
@@ -15,6 +16,11 @@ import { applyGear } from '../gear/equip';
 import {
   ATTACK_BASE,
   ATTACK_PER_PRIMARY,
+  ATTACK_PER_LEVEL,
+  CLASS_BASE_STATS,
+  DEFENCE_PER_LEVEL,
+  DODGE_PCT_BASE,
+  DODGE_PCT_PER_AGI,
   CLASS_PRIMARY_STAT,
   CRIT_PCT_MAX,
   CRIT_PCT_PER_AGI,
@@ -50,15 +56,28 @@ const makeHero = (overrides: Partial<Hero> = {}): Hero => ({
 });
 
 describe('deriveCombat', () => {
-  it('derives every combat value from level, class and stats', () => {
+  /**
+   * Every term written out, INCLUDING the two the fixture does not state: class
+   * base stats fold into the line before derivation, and level scales attack
+   * and defence as well as HP from 0.6.0. Computed from the constants so a
+   * retune moves this with the code.
+   */
+  it('derives every combat value from level, class, base stats and training', () => {
     const hero = makeHero();
+    const base = CLASS_BASE_STATS[hero.heroClass];
+    const primary = CLASS_PRIMARY_STAT[hero.heroClass];
+    const stat = (key: keyof StatBlock) => hero.stats[key] + base[key];
+
     expect(deriveCombat(hero)).toEqual({
-      hp: Math.round(HP_BASE + 16 * HP_PER_VIT + 5 * HP_PER_LEVEL),
-      attack: Math.round(ATTACK_BASE + 10 * ATTACK_PER_PRIMARY),
-      defence: Math.round(16 * DEFENCE_PER_VIT),
-      critPct: 12 * CRIT_PCT_PER_AGI,
-      regen: Math.round(20 * REGEN_PER_SPI),
-      stamina: Math.round(STAMINA_BASE + 14 * STAMINA_PER_END),
+      hp: Math.round(HP_BASE + stat('vit') * HP_PER_VIT + hero.level * HP_PER_LEVEL),
+      attack: Math.round(
+        ATTACK_BASE + stat(primary) * ATTACK_PER_PRIMARY + hero.level * ATTACK_PER_LEVEL,
+      ),
+      defence: Math.round(stat('vit') * DEFENCE_PER_VIT + hero.level * DEFENCE_PER_LEVEL),
+      critPct: stat('agi') * CRIT_PCT_PER_AGI,
+      regen: Math.round(stat('spi') * REGEN_PER_SPI),
+      stamina: Math.round(STAMINA_BASE + stat('end') * STAMINA_PER_END),
+      dodgePct: DODGE_PCT_BASE + stat('agi') * DODGE_PCT_PER_AGI,
     });
   });
 
@@ -85,21 +104,52 @@ describe('deriveCombat', () => {
     });
     const empty = makeHero({ heroClass, stats: statBlock({ str: 0, agi: 0, end: 0, vit: 0, foc: 0, spi: 0 }) });
 
-    expect(deriveCombat(focused).attack).toBe(Math.round(ATTACK_BASE + 30 * ATTACK_PER_PRIMARY));
-    expect(deriveCombat(empty).attack).toBe(Math.round(ATTACK_BASE));
+    /*
+     * The formula gained two terms in 0.6.0: CLASS BASE STATS fold into the
+     * stat line before derivation, and LEVEL scales attack. Computed from the
+     * constants rather than restated as literals, so a retune moves the test
+     * with the code instead of against it.
+     */
+    const base = CLASS_BASE_STATS[heroClass][primary];
+    const levelTerm = focused.level * ATTACK_PER_LEVEL;
+
+    expect(deriveCombat(focused).attack).toBe(
+      Math.round(ATTACK_BASE + (30 + base) * ATTACK_PER_PRIMARY + levelTerm),
+    );
+    expect(deriveCombat(empty).attack).toBe(
+      Math.round(ATTACK_BASE + base * ATTACK_PER_PRIMARY + empty.level * ATTACK_PER_LEVEL),
+    );
     expect(deriveCombat(focused).attack).toBeGreaterThan(deriveCombat(empty).attack);
   });
 
-  it('gives each class a distinct attack when only its primary stat is high', () => {
-    const attacks = HERO_CLASSES.map((heroClass) => {
+  /**
+   * CHANGED IN 0.6.0, and the change is the point. This used to assert every
+   * class produced the SAME attack from its own primary stat — one distinct
+   * value across all five. That was the right assertion when a class was
+   * nothing but a pointer to a stat.
+   *
+   * Class base stats mean a Warrior and a Mage with equally high primaries no
+   * longer hit for the same amount, which is what having a base stat MEANS. So
+   * the intent that survives is the one underneath: every class benefits from
+   * its own primary, and none reads another's.
+   */
+  it('has every class read its OWN primary stat, and no other', () => {
+    for (const heroClass of HERO_CLASSES) {
       const primary = CLASS_PRIMARY_STAT[heroClass];
-      return deriveCombat(
-        makeHero({ heroClass, stats: { str: 1, agi: 1, end: 1, vit: 1, foc: 1, spi: 1, [primary]: 40 } }),
+      const flat = statBlock({ str: 1, agi: 1, end: 1, vit: 1, foc: 1, spi: 1 });
+
+      const onPrimary = deriveCombat(
+        makeHero({ heroClass, stats: { ...flat, [primary]: 40 } }),
       ).attack;
-    });
-    // Every class benefits, and no class is accidentally reading another's stat.
-    expect(new Set(attacks).size).toBe(1);
-    expect(attacks[0]).toBe(Math.round(ATTACK_BASE + 40 * ATTACK_PER_PRIMARY));
+
+      // Raising any OTHER stat must not move attack at all.
+      for (const other of STAT_KEYS.filter((key) => key !== primary)) {
+        const onOther = deriveCombat(
+          makeHero({ heroClass, stats: { ...flat, [other]: 40 } }),
+        ).attack;
+        expect(onOther).toBeLessThan(onPrimary);
+      }
+    }
   });
 
   it('maps each class to a distinct, valid stat', () => {
@@ -111,7 +161,21 @@ describe('deriveCombat', () => {
   it('caps crit chance so an all-AGI build cannot crit on every swing', () => {
     const glassCannon = makeHero({ heroClass: 'ROGUE', stats: statBlock({ agi: 10000 }) });
     expect(deriveCombat(glassCannon).critPct).toBe(CRIT_PCT_MAX);
-    expect(deriveCombat(makeHero({ stats: statBlock({ agi: 0 }) })).critPct).toBe(0);
+  });
+
+  /**
+   * A ZERO-AGI HERO NO LONGER HAS ZERO CRIT, and that is deliberate: every
+   * class has base AGI from 0.6.0, so a class STARTS somewhere rather than at
+   * nothing. The floor is the class's own, and it is small.
+   */
+  it('floors crit at the class base rather than at zero', () => {
+    for (const heroClass of HERO_CLASSES) {
+      const untrained = deriveCombat(makeHero({ heroClass, stats: statBlock({ agi: 0 }) }));
+      const expected = CLASS_BASE_STATS[heroClass].agi * CRIT_PCT_PER_AGI;
+
+      expect(untrained.critPct).toBeCloseTo(expected, 5);
+      expect(untrained.critPct).toBeLessThan(CRIT_PCT_MAX);
+    }
   });
 
   it('scales HP with both VIT and level', () => {

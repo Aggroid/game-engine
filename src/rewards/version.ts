@@ -62,6 +62,20 @@
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
  *
+ *   0.6.0    TALENTS, CLASS BASE STATS AND LEVEL SCALING.
+ *
+ *            Three things a class did not have before: flat starting stats,
+ *            a `dodgePct` to be good or bad at, and fifteen talent trees whose
+ *            points move both. Level now scales attack and defence as well as
+ *            HP — before this a level-20 hit exactly as hard as a level-1 with
+ *            the same stats.
+ *
+ *            This moves because talents grant STAT bonuses that fold into the
+ *            same line trained stats do, so a hero's derived numbers change for
+ *            reasons the ledger alone no longer explains. Ledger rows
+ *            themselves are unaffected: no reward kind was added, nothing
+ *            already written means anything different.
+ *
  *   0.5.0    WINNING A DUEL PAYS XP — a new reward SOURCE, which is why this
  *            moves. `duelXp` scales the payout with the level gap: beating
  *            somebody above you pays more, below you pays less, and five levels
@@ -78,4 +92,4 @@
  *            onward can therefore include `XP` entries attributed to a battle,
  *            which no earlier version could produce.
  */
-export const ENGINE_VERSION = '0.5.0';
+export const ENGINE_VERSION = '0.6.0';

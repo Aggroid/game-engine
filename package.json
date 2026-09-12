@@ -1,6 +1,6 @@
 {
   "name": "@ascend/game-engine",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Pure, deterministic economy and battle simulator. No I/O, no clock, no randomness.",
   "license": "UNLICENSED",
   "private": true,
@@ -30,6 +30,10 @@
     "./gear": {
       "types": "./dist/gear/index.d.ts",
       "default": "./dist/gear/index.js"
+    },
+    "./talents": {
+      "types": "./dist/talents/index.d.ts",
+      "default": "./dist/talents/index.js"
     },
     "./quests": {
       "types": "./dist/quests/index.d.ts",

@@ -52,7 +52,18 @@ const STRONG_HERO = makeHero({
 const ENCOUNTER: Encounter = { id: 'enc-boar', name: 'Tusked Boar', hp: 120, attack: 14, defence: 5, level: 4 };
 
 /** Tuned so the weak hero usually loses it and the strong hero usually does not. */
-const CONTESTED: Encounter = { id: 'enc-warden', name: 'Grove Warden', hp: 170, attack: 18, defence: 8, level: 7 };
+/**
+ * RETUNED IN 0.6.0, and the reason is worth recording: class base stats and
+ * level scaling on attack and defence made every hero stronger, so the old
+ * numbers (hp 170, attack 18, defence 8) were beaten 100% of the time by BOTH
+ * the strong and the weak fixture. An encounter that nobody loses to cannot
+ * measure whether a stronger hero wins more often.
+ *
+ * The same is true of the shipped encounter table — `src/content/encounters` in
+ * the backend is now easier than it was and wants a tuning pass. That is
+ * content, not engine, so it is flagged here rather than changed here.
+ */
+const CONTESTED: Encounter = { id: 'enc-warden', name: 'Grove Warden', hp: 320, attack: 34, defence: 16, level: 7 };
 
 /**
  * Unkillable by a weak hero, and unable to kill one: the only way to reach `MAX_TURNS`.
@@ -313,12 +324,20 @@ describe('simulate — log shape', () => {
 
   it('can win on turn one against a trivial encounter', () => {
     const trivial: Encounter = { id: 'enc-rat', name: 'Sewer Rat', hp: 1, attack: 1, defence: 0, level: 1 };
-    // Zero AGI, so the crit roll can never land and the event list is exact.
+    /*
+     * "Zero AGI so the crit roll can never land" stopped being true in 0.6.0:
+     * every class has BASE AGI now, so even an untrained hero has some crit
+     * chance and this seed lands one. The test is about winning on turn one,
+     * not about which of the two strike events it took to do it.
+     */
     const bruiser = makeHero({ level: 10, stats: statBlock({ str: 30, agi: 0, vit: 15 }) });
     const log = simulate(bruiser, trivial, 1);
     expect(log.turns).toBe(1);
     expect(log.outcome).toBe('WIN');
-    expect(log.events.map((e) => e.type)).toEqual(['ATTACK', 'HIT', 'FAINT', 'VICTORY']);
+
+    const types = log.events.map((e) => e.type);
+    expect(types[0] === 'ATTACK' || types[0] === 'CRIT').toBe(true);
+    expect(types.slice(1)).toEqual(['HIT', 'FAINT', 'VICTORY']);
   });
 
   it('normalises content-authored encounter numbers to integers', () => {

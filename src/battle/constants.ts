@@ -13,7 +13,7 @@
  *
  * A magic number inline in `simulate.ts` or `derive.ts` is a bug, not a style nit.
  */
-import type { HeroClass, StatKey } from '../contracts/types';
+import type { HeroClass, StatBlock, StatKey } from '../contracts/types';
 
 /* -------------------------------------------------------------------------- *
  * Derived combat — see `derive.ts`
@@ -119,4 +119,64 @@ export const CLASS_PRIMARY_STAT: Record<HeroClass, StatKey> = {
   MAGE: 'foc',
   PRIEST: 'spi',
   PALADIN: 'vit',
+};
+
+/* -------------------------------------------------------------------------- *
+ * LEVEL, CLASS AND DODGE — added in ENGINE_VERSION 0.6.0
+ * -------------------------------------------------------------------------- */
+
+/**
+ * How much of a hero's combat comes from their LEVEL rather than their stats.
+ *
+ * Before 0.6.0 level bought HP and nothing else: a level-20 hero hit exactly as
+ * hard as a level-1 with the same stats, which made duels between different
+ * levels feel like a coin flip and made levelling feel like nothing.
+ *
+ * Kept deliberately SMALL against the stat coefficients. Training is what the
+ * game is about; level is the slow floor under it, not a replacement for it. At
+ * level 20 these add 19 attack and 9 defence — real, and still less than a
+ * well-trained stat line.
+ */
+export const ATTACK_PER_LEVEL = 1;
+export const DEFENCE_PER_LEVEL = 0.5;
+
+/** Dodge a hero has before AGI, class or talents. */
+export const DODGE_PCT_BASE = 2;
+
+/** Dodge per point of AGI. */
+export const DODGE_PCT_PER_AGI = 0.35;
+
+/**
+ * Ceiling on dodge.
+ *
+ * Lower than the crit cap on purpose: a fight nobody can land a blow in is not
+ * a fight, and avoidance compounds with HP and defence in a way crit does not.
+ */
+export const DODGE_PCT_MAX = 30;
+
+/**
+ * Flat stats every hero of a class starts with, before anything is trained.
+ *
+ * ============================================================================
+ * WHAT A CLASS *IS*, BEYOND WHICH TRAINING PAYS BEST.
+ * ============================================================================
+ * Until 0.6.0 a class changed exactly two things: which stat drove attack, and
+ * which modality converted well. Two heroes of different classes with identical
+ * training were otherwise identical, so a class was a label on a preference
+ * rather than a thing with a feel.
+ *
+ * These are small — a few points — because they must not swamp earned stats.
+ * A class should START somewhere; it should not ARRIVE somewhere.
+ */
+export const CLASS_BASE_STATS: Record<HeroClass, StatBlock> = {
+  // Heavy and hard to move.
+  WARRIOR: { str: 4, agi: 1, end: 2, vit: 4, foc: 0, spi: 0 },
+  // Precise and fragile.
+  MAGE: { str: 0, agi: 2, end: 2, vit: 1, foc: 5, spi: 3 },
+  // Fast and evasive. Shown as Hunter.
+  ROGUE: { str: 2, agi: 5, end: 3, vit: 1, foc: 1, spi: 0 },
+  // Recovers rather than resists.
+  PRIEST: { str: 0, agi: 1, end: 2, vit: 2, foc: 3, spi: 5 },
+  // No weakness, no peak — the flattest line of the five, on purpose.
+  PALADIN: { str: 2, agi: 2, end: 2, vit: 3, foc: 2, spi: 2 },
 };
