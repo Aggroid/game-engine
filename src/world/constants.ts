@@ -344,3 +344,13 @@ export const RANK_CRIT_PCT = {
  * constant invisible in the battle log, since nothing renders an enemy's regen.
  */
 export const CREATURE_REGEN = 0;
+
+/**
+ * Extra creatures in a pack under the Teeming affix.
+ *
+ * ONE, not two. A pack is fought back to back with health carried between
+ * fights, so a third or fourth body is not a third or fourth more difficulty —
+ * it lands on a health bar that is already low. One is a noticeable week; two
+ * would be a week where every pack node is a coin flip.
+ */
+export const TEEMING_EXTRA_PACK_SIZE = 1;

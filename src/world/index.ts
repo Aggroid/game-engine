@@ -59,6 +59,7 @@ export {
   SIGIL_DROP_CHANCE,
   SWEEP_SIZE_MAX,
   SWEEP_SIZE_MIN,
+  TEEMING_EXTRA_PACK_SIZE,
   WIPE_LOOT_KEPT,
   worldTuningIsCoherent,
 } from './constants';

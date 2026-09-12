@@ -23,12 +23,16 @@
  * curve is therefore an engine-version question, not a catalogue one.
  *
  * ============================================================================
- * ONE ZONE IS AUTHORED. THAT IS ON PURPOSE.
+ * FOUR ZONES, ONE SHAPE, AND THE SHAPE IS THE POINT.
  * ============================================================================
- * Verdant Wastes is the reference zone: six trash, two named rares, one
- * multi-phase boss, one dungeon. The remaining four zones are a later content
- * pass, and the job of this file is to make adding them a matter of typing rows
- * rather than making decisions.
+ * Verdant Wastes was authored first as the reference, and the other three are
+ * the SAME shape filled in: six trash, two named rares, one multi-phase boss,
+ * one dungeon, one level band. A zone that could be "a bit different" is a zone
+ * that has to be designed rather than filled in, and a solo developer cannot
+ * afford to design five of anything.
+ *
+ * Levels 1 to 40, chained by `nextZoneId`: each zone's boss opens the next. The
+ * chain is data, so adding a fifth is four rows and a pointer.
  */
 import type {
   Affix,
@@ -121,6 +125,111 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
       { name: 'The Drowning', hpShare: 0.2, attackMultiplier: 1.8, defenceMultiplier: 0.6 },
     ],
   },
+
+  /* ---- Ashen Road: trash ------------------------------------------------ *
+   * A trade road under a mountain that is still burning. Ash instead of
+   * weather, cinders instead of rain, and caravans that never arrived.
+   *
+   * BAND SCALING IS ROUGHLY 2.5x PER TEN LEVELS, matching the step from the
+   * level-1 dummy to the level-10 troll in the standalone encounter table. A
+   * band that scaled differently from the fight button would make the world
+   * read as a separate game with its own maths.
+   * ---------------------------------------------------------------------- */
+  { id: 'ar-cinder-moth', name: 'Cinder Moth', rank: 'TRASH', level: 11, hp: 210, attack: 22, defence: 10 },
+  { id: 'ar-ashen-drudge', name: 'Ashen Drudge', rank: 'TRASH', level: 12, hp: 250, attack: 25, defence: 11 },
+  { id: 'ar-road-warden', name: 'Road Warden', rank: 'TRASH', level: 14, hp: 320, attack: 30, defence: 14 },
+  { id: 'ar-slagback-boar', name: 'Slagback Boar', rank: 'TRASH', level: 16, hp: 400, attack: 36, defence: 15 },
+  { id: 'ar-kiln-ghoul', name: 'Kiln Ghoul', rank: 'TRASH', level: 18, hp: 480, attack: 40, defence: 18 },
+  { id: 'ar-caravan-wraith', name: 'Caravan Wraith', rank: 'TRASH', level: 19, hp: 560, attack: 44, defence: 20 },
+
+  /* ---- Ashen Road: named rares ------------------------------------------ */
+  { id: 'ar-emberjack', name: 'Emberjack', rank: 'ELITE', level: 15, hp: 700, attack: 38, defence: 16 },
+  { id: 'ar-the-long-mule', name: 'The Long Mule', rank: 'ELITE', level: 18, hp: 950, attack: 42, defence: 22 },
+
+  /* ---- Ashen Road: the boss --------------------------------------------- */
+  {
+    id: 'ar-pyreharrow',
+    name: 'Pyreharrow, the Unfinished Mile',
+    rank: 'BOSS',
+    level: 20,
+    hp: 1400,
+    attack: 52,
+    defence: 24,
+    phases: [
+      { name: 'Smouldering', hpShare: 0.4, attackMultiplier: 1, defenceMultiplier: 1.25 },
+      { name: 'Catching', hpShare: 0.35, attackMultiplier: 1.4, defenceMultiplier: 0.85 },
+      { name: 'Firestorm', hpShare: 0.25, attackMultiplier: 1.9, defenceMultiplier: 0.55 },
+    ],
+  },
+
+  /* ---- Sundered Coast: trash -------------------------------------------- *
+   * Where the sea took the land and did not give it back. Salt, wrecks, and
+   * things that came up out of deep water and stayed.
+   * ---------------------------------------------------------------------- */
+  { id: 'sc-brinelurker', name: 'Brinelurker', rank: 'TRASH', level: 21, hp: 620, attack: 48, defence: 22 },
+  { id: 'sc-wreck-crab', name: 'Wreck Crab', rank: 'TRASH', level: 22, hp: 720, attack: 50, defence: 30 },
+  { id: 'sc-drowned-oarsman', name: 'Drowned Oarsman', rank: 'TRASH', level: 24, hp: 860, attack: 58, defence: 26 },
+  { id: 'sc-salt-flayer', name: 'Salt Flayer', rank: 'TRASH', level: 26, hp: 1000, attack: 66, defence: 29 },
+  { id: 'sc-tide-priest', name: 'Tide Priest', rank: 'TRASH', level: 28, hp: 1180, attack: 74, defence: 33 },
+  { id: 'sc-hullbreaker', name: 'Hullbreaker', rank: 'TRASH', level: 29, hp: 1400, attack: 82, defence: 38 },
+
+  /* ---- Sundered Coast: named rares -------------------------------------- */
+  { id: 'sc-the-grey-mother', name: 'The Grey Mother', rank: 'ELITE', level: 25, hp: 1900, attack: 68, defence: 32 },
+  { id: 'sc-anchorsaint', name: 'Anchorsaint', rank: 'ELITE', level: 28, hp: 2400, attack: 78, defence: 42 },
+
+  /* ---- Sundered Coast: the boss ----------------------------------------- */
+  {
+    id: 'sc-maelstrand',
+    name: 'Maelstrand, the Standing Wave',
+    rank: 'BOSS',
+    level: 30,
+    hp: 3500,
+    attack: 96,
+    defence: 44,
+    phases: [
+      { name: 'Rising', hpShare: 0.35, attackMultiplier: 0.9, defenceMultiplier: 1.3 },
+      { name: 'Breaking', hpShare: 0.4, attackMultiplier: 1.35, defenceMultiplier: 0.9 },
+      { name: 'Undertow', hpShare: 0.25, attackMultiplier: 1.85, defenceMultiplier: 0.6 },
+    ],
+  },
+
+  /* ---- The Rimewood: trash ---------------------------------------------- *
+   * A forest that froze mid-motion and has not moved since. Everything here is
+   * preserved rather than dead, which is worse.
+   * ---------------------------------------------------------------------- */
+  { id: 'rw-frostbitten-elk', name: 'Frostbitten Elk', rank: 'TRASH', level: 31, hp: 1500, attack: 88, defence: 42 },
+  { id: 'rw-rime-stalker', name: 'Rime Stalker', rank: 'TRASH', level: 32, hp: 1700, attack: 98, defence: 44 },
+  { id: 'rw-hollow-pine', name: 'Hollow Pine', rank: 'TRASH', level: 34, hp: 2100, attack: 104, defence: 56 },
+  { id: 'rw-glass-wolf', name: 'Glass Wolf', rank: 'TRASH', level: 36, hp: 2400, attack: 122, defence: 50 },
+  { id: 'rw-winter-warden', name: 'Winter Warden', rank: 'TRASH', level: 38, hp: 2800, attack: 134, defence: 62 },
+  { id: 'rw-the-still-hunter', name: 'The Still Hunter', rank: 'TRASH', level: 39, hp: 3200, attack: 150, defence: 70 },
+
+  /* ---- The Rimewood: named rares ---------------------------------------- */
+  { id: 'rw-snowblind', name: 'Snowblind', rank: 'ELITE', level: 35, hp: 4200, attack: 128, defence: 58 },
+  { id: 'rw-the-long-winter', name: 'The Long Winter', rank: 'ELITE', level: 38, hp: 5400, attack: 142, defence: 72 },
+
+  /* ---- The Rimewood: the boss ------------------------------------------- *
+   * FOUR PHASES, not three. The last authored zone should end on something
+   * structurally bigger than everything before it, and a phase is the cheapest
+   * way to say that — it costs one row of data and reads as an escalation the
+   * player can feel rather than as a number they have to be told about.
+   * ---------------------------------------------------------------------- */
+  {
+    id: 'rw-hoarfather',
+    name: 'The Hoarfather',
+    rank: 'BOSS',
+    level: 40,
+    hp: 8000,
+    attack: 165,
+    defence: 78,
+    phases: [
+      { name: 'Sleeping', hpShare: 0.3, attackMultiplier: 0.85, defenceMultiplier: 1.4 },
+      { name: 'Stirring', hpShare: 0.3, attackMultiplier: 1.15, defenceMultiplier: 1.1 },
+      { name: 'Waking', hpShare: 0.25, attackMultiplier: 1.5, defenceMultiplier: 0.85 },
+      { name: 'The Long Dark', hpShare: 0.15, attackMultiplier: 2.1, defenceMultiplier: 0.5 },
+    ],
+  },
+
 ];
 
 const CREATURES_BY_ID: Readonly<Record<string, CreatureRow>> = Object.freeze(
@@ -260,6 +369,71 @@ const ZONE_ROWS: readonly Zone[] = [
     rareIds: ['vw-gloomstag', 'vw-old-mirebrood'],
     bossId: 'vw-rotcrown',
     dungeonName: 'The Sunken Warren',
+    nextZoneId: 'ashen-road',
+  },
+  {
+    id: 'ashen-road',
+    name: 'The Ashen Road',
+    description:
+      'A trade road under a mountain that is still burning. Ash instead of weather, cinders instead of rain, and caravans that never arrived.',
+    levelMin: 10,
+    levelMax: 20,
+    trashMobIds: [
+      'ar-cinder-moth',
+      'ar-ashen-drudge',
+      'ar-road-warden',
+      'ar-slagback-boar',
+      'ar-kiln-ghoul',
+      'ar-caravan-wraith',
+    ],
+    rareIds: ['ar-emberjack', 'ar-the-long-mule'],
+    bossId: 'ar-pyreharrow',
+    dungeonName: 'The Cinder Run',
+    nextZoneId: 'sundered-coast',
+  },
+  {
+    id: 'sundered-coast',
+    name: 'The Sundered Coast',
+    description:
+      'Where the sea took the land and did not give it back. Salt, wrecks, and things that came up out of deep water and stayed.',
+    levelMin: 20,
+    levelMax: 30,
+    trashMobIds: [
+      'sc-brinelurker',
+      'sc-wreck-crab',
+      'sc-drowned-oarsman',
+      'sc-salt-flayer',
+      'sc-tide-priest',
+      'sc-hullbreaker',
+    ],
+    rareIds: ['sc-the-grey-mother', 'sc-anchorsaint'],
+    bossId: 'sc-maelstrand',
+    dungeonName: 'The Sunken Ladder',
+    nextZoneId: 'the-rimewood',
+  },
+  {
+    /*
+     * THE LAST ZONE, AND `nextZoneId` IS ABSENT RATHER THAN POINTING NOWHERE.
+     * That is what lets the client say "this is the edge of the known world"
+     * instead of rendering a locked door onto a zone that does not exist.
+     */
+    id: 'the-rimewood',
+    name: 'The Rimewood',
+    description:
+      'A forest that froze mid-motion and has not moved since. Everything here is preserved rather than dead, which is worse.',
+    levelMin: 30,
+    levelMax: 40,
+    trashMobIds: [
+      'rw-frostbitten-elk',
+      'rw-rime-stalker',
+      'rw-hollow-pine',
+      'rw-glass-wolf',
+      'rw-winter-warden',
+      'rw-the-still-hunter',
+    ],
+    rareIds: ['rw-snowblind', 'rw-the-long-winter'],
+    bossId: 'rw-hoarfather',
+    dungeonName: 'The White Silence',
   },
 ];
 
@@ -336,7 +510,10 @@ type AffixEffect =
       defencePct?: number;
     }
   | { kind: 'NO_REST_NODES' }
-  | { kind: 'EXTRA_STALKER' };
+  | { kind: 'NO_CACHE_NODES' }
+  | { kind: 'EXTRA_STALKER' }
+  | { kind: 'BIGGER_PACKS' }
+  | { kind: 'EXTRA_FLOOR' };
 
 interface AffixRow extends Affix {
   effect: AffixEffect;
@@ -376,6 +553,51 @@ const AFFIX_ROWS: readonly AffixRow[] = [
     name: 'Hunted',
     description: 'Something has your scent, and it is already ahead of you.',
     effect: { kind: 'EXTRA_STALKER' },
+  },
+
+  /* ---------------------------------------------------------------------- *
+   * The second six.
+   *
+   * SPLIT EVENLY DOWN THE TWO AXES, deliberately: five change the CREATURES and
+   * five change the LAYOUT. A rotation weighted towards one of those would feel
+   * like the same week twice — "everything is tougher again" — where a pair
+   * drawn from both reads as a different dungeon.
+   * ---------------------------------------------------------------------- */
+  {
+    id: 'tempered',
+    name: 'Tempered',
+    description: 'Everything down here is armoured. Your blows land, and they do not land hard.',
+    effect: { kind: 'ENCOUNTER_STAT', defencePct: 0.6 },
+  },
+  {
+    id: 'frenzied',
+    name: 'Frenzied',
+    description: 'Fast, thin and furious. Fights end quickly — one way or the other.',
+    effect: { kind: 'ENCOUNTER_STAT', attackPct: 0.4, hpPct: -0.25 },
+  },
+  {
+    id: 'spiteful',
+    name: 'Spiteful',
+    description: 'They hit back harder than anything that size has any right to.',
+    effect: { kind: 'ENCOUNTER_STAT', attackPct: 0.3 },
+  },
+  {
+    id: 'teeming',
+    name: 'Teeming',
+    description: 'There are more of them than there should be. They come together.',
+    effect: { kind: 'BIGGER_PACKS' },
+  },
+  {
+    id: 'barren',
+    name: 'Barren',
+    description: 'Someone has already been through here. Nothing is left lying about.',
+    effect: { kind: 'NO_CACHE_NODES' },
+  },
+  {
+    id: 'entombed',
+    name: 'Entombed',
+    description: 'It goes deeper than it should. There is another floor down there.',
+    effect: { kind: 'EXTRA_FLOOR' },
   },
 ];
 

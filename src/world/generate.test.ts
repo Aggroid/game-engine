@@ -1,5 +1,5 @@
 import type { DungeonPlan, NodeKind } from '../contracts/types';
-import { zoneById } from './catalogue';
+import { ZONES, zoneById } from './catalogue';
 import {
   AFFIXES_PER_WEEK,
   BASE_FLOOR_COUNT,
@@ -233,5 +233,112 @@ describe('the weekly rotation', () => {
 describe('a retired zone', () => {
   it('yields null rather than an empty dungeon nobody can fight', () => {
     expect(generateDungeon({ zoneId: 'nowhere', tier: 1, affixes: [], seed: 1 })).toBeNull();
+  });
+});
+
+/**
+ * ============================================================================
+ * THE SECOND SIX AFFIXES, AND THE THREE THAT CHANGE THE LAYOUT.
+ * ============================================================================
+ * Five affixes change the creatures and five change the layout. A rotation
+ * weighted towards one axis would feel like the same week twice — "everything is
+ * tougher again" — where a pair drawn from both reads as a different dungeon.
+ */
+describe('the layout affixes', () => {
+  it('Barren removes caches entirely, the way Starving removes rest', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+      expect(kindsIn(plan({ seed, tier: 5, affixes: ['barren'] }))).not.toContain('CACHE');
+    }
+  });
+
+  it('Starving and Barren together leave a dungeon that is only fights', () => {
+    const kinds = kindsIn(plan({ tier: 5, affixes: ['starving', 'barren'] }));
+    expect(kinds).not.toContain('REST');
+    expect(kinds).not.toContain('CACHE');
+    expect(kinds.length).toBeGreaterThan(0);
+  });
+
+  it('Teeming puts one more body in every pack', () => {
+    const plain = plan({ seed: 31, tier: 4 });
+    const teeming = plan({ seed: 31, tier: 4, affixes: ['teeming'] });
+
+    const packsOf = (dungeon: DungeonPlan) =>
+      dungeon.floors.flatMap((floor) =>
+        floor.nodes.filter((node) => node.kind === 'PACK').map((node) => node.encounterSpecs.length),
+      );
+
+    const before = packsOf(plain);
+    const after = packsOf(teeming);
+    expect(after.length).toBe(before.length);
+    for (const [index, size] of after.entries()) expect(size).toBe((before[index] ?? 0) + 1);
+  });
+
+  /**
+   * THE PAYOFF OF ADDING AFTER THE DRAW rather than widening its range. Widening
+   * would move the stream position for every later node, so adding one affix to
+   * a week would rearrange the whole dungeon instead of making its packs bigger.
+   */
+  it('Teeming changes pack sizes and nothing else about the dungeon', () => {
+    const plain = plan({ seed: 77, tier: 4 });
+    const teeming = plan({ seed: 77, tier: 4, affixes: ['teeming'] });
+
+    expect(kindsIn(teeming)).toEqual(kindsIn(plain));
+    expect(teeming.floors.map((floor) => floor.nodes.map((node) => node.id))).toEqual(
+      plain.floors.map((floor) => floor.nodes.map((node) => node.id)),
+    );
+  });
+
+  it('Entombed adds a floor', () => {
+    expect(plan({ tier: 2, affixes: ['entombed'] }).floors.length).toBe(
+      plan({ tier: 2 }).floors.length + 1,
+    );
+  });
+
+  /*
+   * A run must end, whatever the week is doing to it. The ceiling holds even
+   * when a deep tier and Entombed are asking for the same extra floor.
+   */
+  it('never lets Entombed push a run past the hard ceiling', () => {
+    expect(plan({ tier: 50, affixes: ['entombed'] }).floors.length).toBeLessThanOrEqual(
+      MAX_FLOOR_COUNT,
+    );
+  });
+
+  it('still ends the last floor on an elite, however deep Entombed made it', () => {
+    const dungeon = plan({ tier: 2, affixes: ['entombed'] });
+    expect(dungeon.floors[dungeon.floors.length - 1]?.nodes[0]?.kind).toBe('ELITE');
+  });
+});
+
+describe('the whole world generates', () => {
+  /*
+   * A zone whose trash table had a typo would produce dungeons with an
+   * unfightable door in them, and the symptom would surface three layers away as
+   * a run that cannot be fought.
+   */
+  it('makes a dungeon for every authored zone', () => {
+    for (const zone of ZONES) {
+      const dungeon = generateDungeon({ zoneId: zone.id, tier: 3, affixes: [], seed: 5 });
+      expect(dungeon).not.toBeNull();
+
+      const trash = new Set(zone.trashMobIds);
+      for (const floor of dungeon?.floors ?? []) {
+        for (const node of floor.nodes) {
+          for (const spec of node.encounterSpecs) expect(trash.has(spec.mobId)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('rotates a different pair of affixes per zone per week', () => {
+    const pairs = new Set(
+      ZONES.flatMap((zone) =>
+        Array.from({ length: 20 }, (_unused, index) =>
+          affixesForWeek(`2026-W${index + 1}`, zone.id).join('+'),
+        ),
+      ),
+    );
+    // Ten affixes give forty-five distinct pairs; eighty draws must find several.
+    expect(pairs.size).toBeGreaterThan(5);
   });
 });

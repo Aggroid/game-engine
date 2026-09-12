@@ -18,6 +18,7 @@ import {
   NODE_WEIGHT,
   PACK_SIZE_MAX,
   PACK_SIZE_MIN,
+  TEEMING_EXTRA_PACK_SIZE,
 } from './constants';
 import { hashToSeed } from './seed';
 
@@ -44,6 +45,26 @@ import { hashToSeed } from './seed';
  * sequence. Here the 4-tuple IS the contract, stated that way in the design and
  * relied on by the storage model — and a caller handing over a half-consumed
  * stream would silently break it.
+ *
+ * ============================================================================
+ * KNOWN HAZARD, UNRESOLVED: THIS FUNCTION'S OUTPUT IS NOT VERSIONED.
+ * ============================================================================
+ * A run stores four fields and re-derives its dungeon on every read, which is
+ * the property that makes the storage model cheap. It also means that CHANGING
+ * THIS FUNCTION CHANGES THE SHAPE OF RUNS THAT ARE ALREADY IN PROGRESS: the door
+ * a player was about to open becomes a different door, mid-run.
+ *
+ * That is fine for encounter DIFFICULTY — the design explicitly wants a retuned
+ * depth curve to reach a half-fought run — and it is not fine for LAYOUT.
+ *
+ * Neither existing version stamp covers it. `ENGINE_VERSION` is the reward
+ * economy and `SIM_VERSION` is the battle simulator's output; a dungeon's layout
+ * is neither, so a change here moves no number and nothing notices.
+ *
+ * The fix is a third stamp — a `WORLD_VERSION` written onto the run row, with
+ * generation pinned per version — and it is deliberately NOT being invented
+ * here, in the middle of a content pass. Until it exists, treat any change to
+ * the generator as breaking for in-flight runs and ship it when there are none.
  */
 
 /* -------------------------------------------------------------------------- *
@@ -97,15 +118,16 @@ function drawFrom<T>(rng: () => number, values: readonly T[]): T {
  * Hunted affix, never drawn, which is what makes that affix read as an event
  * rather than as a change in the odds.
  *
- * `REST` is removed entirely under Starving. Removed rather than zero-weighted
- * so the remaining weights renormalise — an affix that made rest rare instead of
- * absent would be a worse version of the same idea and much harder to describe.
+ * `REST` under Starving and `CACHE` under Barren are REMOVED rather than
+ * zero-weighted, so the remaining weights renormalise. An affix that made rest
+ * rare instead of absent would be a worse version of the same idea and far
+ * harder to describe in the one line an affix gets.
  */
-function kindCandidates(starving: boolean): Weighted<NodeKind>[] {
+function kindCandidates(banned: readonly NodeKind[]): Weighted<NodeKind>[] {
   const kinds: NodeKind[] = ['PACK', 'ELITE', 'REST', 'CACHE'];
 
   return kinds
-    .filter((kind) => !(starving && kind === 'REST'))
+    .filter((kind) => !banned.includes(kind))
     .map((kind) => ({ weight: NODE_WEIGHT[kind], value: kind }))
     .filter((candidate) => candidate.weight > 0);
 }
@@ -117,21 +139,36 @@ function kindCandidates(starving: boolean): Weighted<NodeKind>[] {
  * a decision rather than arithmetic: a floor where every door is a fight is a
  * floor you walk through, not one you weigh.
  *
- * Draws are UNCONDITIONAL per kind, but the number of draws differs by kind —
- * which is safe here and not in the simulator, because the kind is already fixed
- * by an earlier draw from the same stream, so the branch is itself a pure
- * function of the seed.
+ * ============================================================================
+ * A NODE'S CONTENTS COME FROM THEIR OWN STREAM, NOT THE LAYOUT'S.
+ * ============================================================================
+ * This used to draw from the generator's single stream, and that made the number
+ * of draws inside one node change everything after it: a three-mob pack consumed
+ * one more number than a two-mob pack, so the Teeming affix — which adds a body
+ * to every pack — quietly rearranged the whole dungeon rather than making its
+ * packs bigger. The bug was invisible in the output and obvious in a test that
+ * compared the two dungeons node by node.
+ *
+ * A per-node sub-stream, seeded from `(runSeed, nodeId)`, makes node CONTENTS
+ * independent of node COUNT. Any affix that changes what is inside a door can
+ * then never move the doors — which is the property that lets a week's affixes
+ * read as modifiers rather than as a different dungeon.
  */
 function encounterSpecsFor(
-  rng: () => number,
+  runSeed: number,
   kind: NodeKind,
   nodeId: string,
   trashMobIds: readonly string[],
+  extraPackSize: number,
 ): EncounterSpec[] {
   if (kind === 'REST' || kind === 'CACHE') return [];
 
+  const rng = createRng(hashToSeed(`${runSeed >>> 0} ${nodeId} contents`));
+
   if (kind === 'PACK') {
-    const size = drawInt(rng, PACK_SIZE_MIN, PACK_SIZE_MAX);
+    // The size draw comes first and from the same range every time; Teeming adds
+    // afterwards, so the base pack is the same pack with one more body in it.
+    const size = drawInt(rng, PACK_SIZE_MIN, PACK_SIZE_MAX) + extraPackSize;
     return Array.from({ length: size }, (_unused, index) => ({
       id: `${nodeId}-e${index + 1}`,
       mobId: drawFrom(rng, trashMobIds),
@@ -176,10 +213,28 @@ export function generateDungeon(input: {
   if (zone === null) return null;
 
   const rng = createRng(input.seed);
-  const floorCount = floorCountForTier(input.tier);
+
   const starving = hasAffixKind(input.affixes, 'NO_REST_NODES');
+  const barren = hasAffixKind(input.affixes, 'NO_CACHE_NODES');
   const hunted = hasAffixKind(input.affixes, 'EXTRA_STALKER');
-  const candidates = kindCandidates(starving);
+  const teeming = hasAffixKind(input.affixes, 'BIGGER_PACKS');
+  const entombed = hasAffixKind(input.affixes, 'EXTRA_FLOOR');
+
+  /*
+   * Entombed adds a floor and the ceiling still holds: a run must end, whatever
+   * the week is doing to it.
+   */
+  const floorCount = Math.min(
+    MAX_FLOOR_COUNT,
+    floorCountForTier(input.tier) + (entombed ? 1 : 0),
+  );
+
+  const banned: NodeKind[] = [
+    ...(starving ? (['REST'] as const) : []),
+    ...(barren ? (['CACHE'] as const) : []),
+  ];
+  const candidates = kindCandidates(banned);
+  const extraPackSize = teeming ? TEEMING_EXTRA_PACK_SIZE : 0;
 
   /*
    * THE STALKER'S FLOOR IS DRAWN UNCONDITIONALLY, even when nothing is hunting.
@@ -218,7 +273,13 @@ export function generateDungeon(input: {
       nodes.push({
         id: nodeId,
         kind,
-        encounterSpecs: encounterSpecsFor(rng, kind, nodeId, zone.trashMobIds),
+        encounterSpecs: encounterSpecsFor(
+          input.seed,
+          kind,
+          nodeId,
+          zone.trashMobIds,
+          extraPackSize,
+        ),
       });
     }
 
