@@ -61,5 +61,21 @@
  *              A hero who had all six pieces of a set under 0.2.0 still holds both bonus
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
+ *
+ *   0.5.0    WINNING A DUEL PAYS XP — a new reward SOURCE, which is why this
+ *            moves. `duelXp` scales the payout with the level gap: beating
+ *            somebody above you pays more, below you pays less, and five levels
+ *            below pays exactly nothing.
+ *
+ *            It is an economy rule doing a job matchmaking used to do. The PvP
+ *            level band was removed, so nothing forbids farming a much weaker
+ *            hero any more — and a refusal tells somebody they may not play,
+ *            where a zero tells them it was not worth playing. The fight stays
+ *            available for the reasons that were never about XP.
+ *
+ *            Before this, battles wrote NO ledger rows at all: the only thing a
+ *            win produced was a chance of a gear drop. Rows written from 0.5.0
+ *            onward can therefore include `XP` entries attributed to a battle,
+ *            which no earlier version could produce.
  */
-export const ENGINE_VERSION = '0.4.0';
+export const ENGINE_VERSION = '0.5.0';

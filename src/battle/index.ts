@@ -11,4 +11,11 @@ export { createRng } from './prng';
 export { deriveCombat } from './derive';
 export { simulate } from './simulate';
 export { simulateDuel } from './duel';
+export {
+  duelXp,
+  DUEL_XP_BASE,
+  DUEL_XP_PER_LEVEL,
+  DUEL_XP_ZERO_BELOW,
+  DUEL_XP_MAX_MULTIPLIER,
+} from './duelReward';
 export * from './constants';
