@@ -3,7 +3,7 @@
 exports[`foldLedger — order invariance is order-independent for a ledger built from real scored workouts 1`] = `
 {
   "gold": 253,
-  "level": 3,
+  "level": 5,
   "stats": {
     "agi": 6,
     "end": 10,
@@ -24,39 +24,39 @@ exports[`xpForLevel snapshots the shape of the curve 1`] = `
   ],
   [
     2,
-    120,
+    50,
   ],
   [
     3,
-    351,
+    143,
   ],
   [
     5,
-    1029,
+    451,
   ],
   [
     10,
-    3616,
+    1889,
   ],
   [
     20,
-    11515,
+    8970,
   ],
   [
     30,
-    22177,
+    22974,
   ],
   [
     50,
-    50002,
+    78717,
   ],
   [
     75,
-    94731,
+    218499,
   ],
   [
     100,
-    148736,
+    458613,
   ],
 ]
 `;

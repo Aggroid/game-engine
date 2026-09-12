@@ -62,6 +62,28 @@
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
  *
+ *   0.7.0    A BANDED LEVEL CURVE, AND TWO SMALLER ECONOMY CHANGES.
+ *
+ *            The curve was one power law: it charged 120 XP for level 2 — most
+ *            of a hard session before anything happened — then flattened, so
+ *            30 to 40 cost barely more per level than 20 to 30. Progress felt
+ *            slowest exactly where it should have been fastest.
+ *
+ *            Now ten-level bands, each 30% dearer than the last. Reaching 10 is
+ *            about twice as fast as before, 20 a little faster, 30 about the
+ *            same, 40 about 30% dearer.
+ *
+ *            EVERY EXISTING HERO'S LEVEL MOVES, upward, the moment this
+ *            deploys. That is safe rather than alarming: level has never been
+ *            stored, only folded from lifetime XP, so nothing migrates and
+ *            nothing can disagree. It does mean a player opens the app to a
+ *            higher number than they left it at.
+ *
+ *            Also here: `disenchantValue` — breaking an item down for gold,
+ *            which is a new gold SOURCE and deliberately worth far less than
+ *            selling; and the PvP rematch cooldown became DIRECTIONAL, so being
+ *            attacked no longer stops you attacking back.
+ *
  *   0.6.0    TALENTS, CLASS BASE STATS AND LEVEL SCALING.
  *
  *            Three things a class did not have before: flat starting stats,
@@ -92,4 +114,4 @@
  *            onward can therefore include `XP` entries attributed to a battle,
  *            which no earlier version could produce.
  */
-export const ENGINE_VERSION = '0.6.0';
+export const ENGINE_VERSION = '0.7.0';

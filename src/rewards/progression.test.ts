@@ -21,9 +21,11 @@ import {
   zeroStats,
 } from './__fixtures__/support';
 import { applyRewards } from './apply';
-import { LEVEL_CURVE_BASE } from './constants';
+import { LEVEL_STEP_BASE } from './constants';
 import { computeEffortPoints } from './effort';
-import { foldLedger, levelFromXp, xpForLevel } from './progression';
+import { foldLedger, levelFromXp, xpForLevel,
+  xpForLevelStep,
+} from './progression';
 import { ENGINE_VERSION } from './version';
 
 /** Builds a large, messy, deterministic ledger — including corrections and item drops. */
@@ -51,7 +53,12 @@ describe('xpForLevel', () => {
   });
 
   it('puts level 2 inside the first real training session', () => {
-    expect(xpForLevel(2)).toBe(LEVEL_CURVE_BASE);
+    /*
+     * `LEVEL_STEP_BASE` since 0.7.0, and lower than the old `LEVEL_CURVE_BASE`
+     * on purpose: 120 XP was most of a hard session before anything happened,
+     * on the one level-up that has to land while a new user is still watching.
+     */
+    expect(xpForLevel(2)).toBe(LEVEL_STEP_BASE);
   });
 
   it('is strictly increasing, so no two levels share a threshold', () => {
@@ -276,5 +283,98 @@ describe('foldLedger — totals', () => {
 
     expect(state.gold).toBe(0);
     expect(state.stats.agi).toBe(0);
+  });
+});
+
+describe('the banded curve', () => {
+  /**
+   * The shape asked for: quick at the start, progressively slower, and still
+   * reachable. The old single power law was smooth and smoothly wrong at both
+   * ends — dear at level 2, and nearly flat from 30 to 40.
+   */
+  it('gets dearer with every band', () => {
+    const bandOne = xpForLevelStep(5);
+    const bandTwo = xpForLevelStep(15);
+    const bandThree = xpForLevelStep(25);
+    const bandFour = xpForLevelStep(35);
+
+    expect(bandTwo).toBeGreaterThan(bandOne);
+    expect(bandThree).toBeGreaterThan(bandTwo);
+    expect(bandFour).toBeGreaterThan(bandThree);
+  });
+
+  /**
+   * Crossing a band is the steepening a player should FEEL.
+   *
+   * Bands are `floor((level - 2) / LEVEL_BAND_SIZE)`, so the first boundary is
+   * the step to level 12 — levels 2 to 11 are the ten level-ups of band one.
+   */
+  it('jumps hardest at a band boundary', () => {
+    const insideBand = xpForLevelStep(11) - xpForLevelStep(10);
+    const acrossBand = xpForLevelStep(12) - xpForLevelStep(11);
+
+    expect(acrossBand).toBeGreaterThan(insideBand);
+  });
+
+  it('never goes backwards', () => {
+    let previous = 0;
+    for (let level = 2; level <= 60; level += 1) {
+      const total = xpForLevel(level);
+      expect(total).toBeGreaterThan(previous);
+      previous = total;
+    }
+  });
+
+  it('is a whole number of XP at every level', () => {
+    for (let level = 1; level <= 60; level += 1) {
+      expect(Number.isInteger(xpForLevel(level))).toBe(true);
+    }
+  });
+
+  /**
+   * THE MEMO MUST NOT BE ABLE TO DISAGREE WITH ITSELF. `xpForLevel` fills a
+   * cumulative table lazily and `levelFromXp` bisects on it, so a table filled
+   * out of order would return different answers depending on what had been
+   * asked for first.
+   */
+  it('gives the same answer whatever order it is asked in', () => {
+    const forwards: number[] = [];
+    for (let level = 1; level <= 30; level += 1) forwards.push(xpForLevel(level));
+
+    const backwards: number[] = [];
+    for (let level = 30; level >= 1; level -= 1) backwards.unshift(xpForLevel(level));
+
+    expect(backwards).toEqual(forwards);
+  });
+
+  it('agrees with the sum of its own steps', () => {
+    let summed = 0;
+    for (let level = 2; level <= 25; level += 1) {
+      summed += xpForLevelStep(level);
+      expect(xpForLevel(level)).toBe(summed);
+    }
+  });
+
+  /** `levelFromXp` still inverts it exactly, including at every boundary. */
+  it('inverts exactly at every threshold', () => {
+    for (let level = 2; level <= 45; level += 1) {
+      const threshold = xpForLevel(level);
+
+      expect(levelFromXp(threshold)).toBe(level);
+      expect(levelFromXp(threshold - 1)).toBe(level - 1);
+    }
+  });
+
+  /**
+   * Reaching 10 is about twice as fast as the old curve. Pinned as a RATIO
+   * against the level-20 cost rather than as a literal, so a retune that keeps
+   * the shape keeps the test.
+   */
+  it('front-loads the first ten levels', () => {
+    const toTen = xpForLevel(10);
+    const toTwenty = xpForLevel(20);
+
+    // The first ten levels are a small fraction of the next ten.
+    expect(toTen / toTwenty).toBeLessThan(0.3);
   });
 });

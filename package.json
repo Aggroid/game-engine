@@ -1,6 +1,6 @@
 {
   "name": "@ascend/game-engine",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Pure, deterministic economy and battle simulator. No I/O, no clock, no randomness.",
   "license": "UNLICENSED",
   "private": true,

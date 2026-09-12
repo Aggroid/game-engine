@@ -22,7 +22,12 @@
 import type { HeroState, RewardEntry, StatBlock, StatKey } from '../contracts/types';
 import { STAT_KEYS } from '../contracts/types';
 
-import { LEVEL_CURVE_BASE, LEVEL_CURVE_EXPONENT } from './constants';
+import {
+  LEVEL_BAND_GROWTH,
+  LEVEL_BAND_SIZE,
+  LEVEL_STEP_BASE,
+  LEVEL_STEP_EXPONENT,
+} from './constants';
 import { REWARD_KIND_STAT } from './routing';
 
 /** The level every hero starts at. Level 1 costs no XP by definition. */
@@ -40,13 +45,47 @@ const FIRST_LEVEL = 1;
  *              caller cannot conjure a fractional threshold.
  * @returns Total lifetime XP needed to be this level. Strictly increasing above level 1.
  */
+/**
+ * What the step from `level - 1` to `level` costs on its own.
+ *
+ * Band multiplier times a sub-linear growth inside the band. Exported because
+ * "what does my next level cost" is a question a client asks directly, and
+ * subtracting two cumulative totals to answer it is the kind of arithmetic that
+ * goes wrong at a boundary.
+ */
+export function xpForLevelStep(level: number): number {
+  const whole = Math.floor(level);
+  if (whole <= FIRST_LEVEL) return 0;
+
+  const band = Math.floor((whole - FIRST_LEVEL - 1) / LEVEL_BAND_SIZE);
+  const multiplier = 1 + band * LEVEL_BAND_GROWTH;
+
+  return Math.round(
+    LEVEL_STEP_BASE * (whole - FIRST_LEVEL) ** LEVEL_STEP_EXPONENT * multiplier,
+  );
+}
+
+/**
+ * Memo for the cumulative curve.
+ *
+ * `xpForLevel` is summed rather than closed-form, because a banded curve has no
+ * tidy inverse — and `levelFromXp` bisects on this function, so it is called
+ * many times per lookup. Filled in order and only ever appended to, so it can
+ * never disagree with itself.
+ */
+const cumulative: number[] = [0, 0];
+
 export function xpForLevel(level: number): number {
   const whole = Math.floor(level);
   if (whole <= FIRST_LEVEL) {
     return 0;
   }
 
-  return Math.round(LEVEL_CURVE_BASE * (whole - FIRST_LEVEL) ** LEVEL_CURVE_EXPONENT);
+  for (let next = cumulative.length; next <= whole; next += 1) {
+    cumulative[next] = (cumulative[next - 1] ?? 0) + xpForLevelStep(next);
+  }
+
+  return cumulative[whole] ?? 0;
 }
 
 /**

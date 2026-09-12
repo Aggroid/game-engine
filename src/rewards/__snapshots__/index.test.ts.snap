@@ -3,7 +3,7 @@
 exports[`a full training week, end to end turns real sessions into a hero without any of the pieces disagreeing 1`] = `
 {
   "gold": 174,
-  "level": 2,
+  "level": 4,
   "stats": {
     "agi": 3,
     "end": 5,

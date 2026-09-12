@@ -244,12 +244,24 @@ export const DROP_CHANCE_PVE = 0.2;
 export const PVP_LEVEL_BAND = DROP_BAND_ABOVE;
 
 /**
- * Hours before the same pairing can be fought again.
+ * Hours before YOU may attack the same hero again.
  *
- * Without it the strategy is to find the weakest hero in your band and farm
+ * Without it the strategy is to find the weakest hero you can beat and farm
  * them, which is both the least interesting way to play and miserable for them.
+ *
+ * ============================================================================
+ * DIRECTIONAL SINCE 0.8.0, AND THAT IS THE IMPORTANT HALF.
+ * ============================================================================
+ * It used to match a fight in EITHER direction, so being attacked started your
+ * own cooldown against your attacker — somebody could hit you and you could not
+ * hit back. Retaliation is the one rematch that should always be available; it
+ * is the whole shape of a rivalry, and the version that forbade it turned every
+ * attack into a free shot.
+ *
+ * The limit now counts only fights YOU started. Two heroes may each attack the
+ * other once per window, which is symmetric in the way that matters.
  */
-export const PVP_REMATCH_COOLDOWN_HOURS = 6;
+export const PVP_REMATCH_COOLDOWN_HOURS = 12;
 
 /* -------------------------------------------------------------------------- *
  * Re-rolling — the gold sink

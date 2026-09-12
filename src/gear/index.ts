@@ -12,3 +12,9 @@ export * from './setBonuses';
 export * from './equip';
 export * from './drops';
 export * from './roll';
+
+export {
+  disenchantValue,
+  DISENCHANT_GOLD_PER_ITEM_LEVEL,
+  DISENCHANT_MIN_GOLD,
+} from './disenchant';

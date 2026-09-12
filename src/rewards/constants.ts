@@ -280,6 +280,48 @@ export const STAT_POINTS_PER_EP = 0.05;
  */
 export const LEVEL_CURVE_BASE = 120;
 
+/* -------------------------------------------------------------------------- *
+ * THE BANDED LEVEL CURVE — ENGINE_VERSION 0.7.0
+ * -------------------------------------------------------------------------- */
+
+/**
+ * How many levels share a difficulty band.
+ *
+ * The old curve was a single power law: smooth, and smoothly wrong at both
+ * ends. It charged 120 XP for level 2 — most of a hard session before anything
+ * happened — and then flattened out, so levels 30 to 40 cost barely more each
+ * than 20 to 30 did. Progress felt slow when it should have been fastest and
+ * cheap when it should have meant the most.
+ *
+ * Ten levels per band, so "I am in my second band" is a thing a player can feel
+ * without being told.
+ */
+export const LEVEL_BAND_SIZE = 10;
+
+/** Cost of the FIRST level-up, before any band multiplier. */
+export const LEVEL_STEP_BASE = 50;
+
+/**
+ * Growth WITHIN a band.
+ *
+ * Under 1, deliberately: the step still rises with every level, but sub-linearly,
+ * so the steepening a player feels comes from crossing a BAND rather than from
+ * grinding inside one. Two sources of steepening compound badly — that is how
+ * the earlier attempt reached 130,000 XP for level 40, roughly twelve years of
+ * daily training.
+ */
+export const LEVEL_STEP_EXPONENT = 0.9;
+
+/**
+ * How much dearer each band is than the one before it.
+ *
+ * +30% per band. Level 2 costs 50; level 40 costs about 2,400. Reaching 10 is
+ * roughly twice as fast as the old curve, 20 a little faster, 30 about the
+ * same, and 40 about 30% dearer — which is the shape asked for: quick at the
+ * start, progressively slower, and still reachable.
+ */
+export const LEVEL_BAND_GROWTH = 0.3;
+
 /**
  * Curvature of the cumulative XP requirement.
  *
