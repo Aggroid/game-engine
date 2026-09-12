@@ -62,6 +62,13 @@
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
  *
+ *   0.8.0    A DUEL WIN ALSO PAYS GOLD. `duelGold` is the XP figure times a
+ *            multiplier rather than a second curve — two independent curves for
+ *            one event drift the first time either is retuned, leaving a fight
+ *            worth good XP and poor gold for no explainable reason. The
+ *            five-levels-below cutoff applies to both, because it is the same
+ *            zero.
+ *
  *   0.7.0    A BANDED LEVEL CURVE, AND TWO SMALLER ECONOMY CHANGES.
  *
  *            The curve was one power law: it charged 120 XP for level 2 — most
@@ -114,4 +121,4 @@
  *            onward can therefore include `XP` entries attributed to a battle,
  *            which no earlier version could produce.
  */
-export const ENGINE_VERSION = '0.7.0';
+export const ENGINE_VERSION = '0.8.0';

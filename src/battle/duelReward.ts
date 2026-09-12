@@ -92,3 +92,29 @@ export function duelXp(winnerLevel: number, loserLevel: number): number {
    */
   return Math.max(1, Math.round(DUEL_XP_BASE * multiplier));
 }
+
+/**
+ * Gold for winning a duel.
+ *
+ * ============================================================================
+ * TIED TO THE XP, NOT TUNED SEPARATELY.
+ * ============================================================================
+ * Two independent curves for the same event is two things to keep in step, and
+ * they would drift the first time either was retuned — leaving a fight that was
+ * worth good XP and poor gold, or the reverse, for no reason anybody could
+ * explain. One curve, one multiplier: whatever makes a duel worth more XP makes
+ * it worth proportionally more gold, and the five-levels-below cutoff applies
+ * to both because it is the same zero.
+ *
+ * Below the XP figure on purpose. Training is the main source of both, and a
+ * duel that out-earned a session would make fighting the efficient way to
+ * play a fitness game.
+ */
+export const DUEL_GOLD_PER_XP = 0.6;
+
+export function duelGold(winnerLevel: number, loserLevel: number): number {
+  const xp = duelXp(winnerLevel, loserLevel);
+  if (xp === 0) return 0;
+  // At least 1 when anything was earned: a win that pays zero gold reads as a bug.
+  return Math.max(1, Math.round(xp * DUEL_GOLD_PER_XP));
+}

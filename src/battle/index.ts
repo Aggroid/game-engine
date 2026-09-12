@@ -17,5 +17,7 @@ export {
   DUEL_XP_PER_LEVEL,
   DUEL_XP_ZERO_BELOW,
   DUEL_XP_MAX_MULTIPLIER,
+  duelGold,
+  DUEL_GOLD_PER_XP,
 } from './duelReward';
 export * from './constants';

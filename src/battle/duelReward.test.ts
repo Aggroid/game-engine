@@ -3,6 +3,8 @@ import {
   DUEL_XP_MAX_MULTIPLIER,
   DUEL_XP_ZERO_BELOW,
   duelXp,
+  duelGold,
+  DUEL_GOLD_PER_XP,
 } from './duelReward';
 
 /**
@@ -113,5 +115,43 @@ describe('what the ledger requires', () => {
 
   it('truncates a fractional level rather than propagating it', () => {
     expect(duelXp(10.9, 10.2)).toBe(duelXp(10, 10));
+  });
+});
+
+describe('gold follows the XP', () => {
+  /**
+   * ONE CURVE, ONE MULTIPLIER. Two independent curves for the same event drift
+   * the first time either is retuned.
+   */
+  it('pays gold in proportion to the XP', () => {
+    for (const opponent of [6, 8, 10, 12, 20]) {
+      const xp = duelXp(10, opponent);
+      const gold = duelGold(10, opponent);
+      if (xp === 0) expect(gold).toBe(0);
+      else expect(gold).toBe(Math.max(1, Math.round(xp * DUEL_GOLD_PER_XP)));
+    }
+  });
+
+  it('pays nothing where the XP pays nothing', () => {
+    expect(duelXp(10, 5)).toBe(0);
+    expect(duelGold(10, 5)).toBe(0);
+  });
+
+  /** Below the XP: training is the main source, and a duel must not out-earn it. */
+  it('is worth less than the XP it accompanies', () => {
+    expect(duelGold(10, 10)).toBeLessThan(duelXp(10, 10));
+  });
+
+  it('never pays a fractional gold', () => {
+    for (let opponent = 1; opponent <= 30; opponent += 1) {
+      expect(Number.isInteger(duelGold(10, opponent))).toBe(true);
+    }
+  });
+
+  /** A win that pays zero gold reads as a bug, so anything earned pays at least 1. */
+  it('pays at least one gold whenever it pays anything', () => {
+    for (let opponent = 6; opponent <= 30; opponent += 1) {
+      if (duelXp(10, opponent) > 0) expect(duelGold(10, opponent)).toBeGreaterThanOrEqual(1);
+    }
   });
 });
