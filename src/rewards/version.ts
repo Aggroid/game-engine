@@ -62,6 +62,24 @@
  *              tiers under 0.3.0, so no hero loses a bonus; the change only means the
  *              weapon they were wearing no longer counts toward it.
  *
+ *   0.9.0    TRAINING LEADS AGAIN, AND CAN DROP GEAR.
+ *
+ *            `XP_PER_EP` 1.0 -> 2.0. Real sessions earned 24 to 60 XP while a
+ *            duel paid 25 and stamina allowed three a day, so duelling could
+ *            out-earn training in a game whose premise is that the training is
+ *            the point. A long session is now worth about 120 XP against 75 for
+ *            a full day of fighting.
+ *
+ *            `rollSessionDrop` lets a session drop green, blue or purple. The
+ *            chance scales with EP so a ten-minute walk is not the same lottery
+ *            ticket as an hour under the bar, and it sits BELOW the combat
+ *            rates on purpose: fighting keeps loot as the thing it is best at,
+ *            now that XP and gold lean towards training.
+ *
+ *            EVERY EXISTING HERO'S LEVEL MOVES UP AGAIN, for the same reason as
+ *            0.7.0: level is folded from lifetime XP and XP per EP just
+ *            doubled. Nothing migrates; the number simply recomputes.
+ *
  *   0.8.0    A DUEL WIN ALSO PAYS GOLD. `duelGold` is the XP figure times a
  *            multiplier rather than a second curve — two independent curves for
  *            one event drift the first time either is retuned, leaving a fight
@@ -121,4 +139,4 @@
  *            onward can therefore include `XP` entries attributed to a battle,
  *            which no earlier version could produce.
  */
-export const ENGINE_VERSION = '0.8.0';
+export const ENGINE_VERSION = '0.9.0';

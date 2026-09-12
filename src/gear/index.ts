@@ -18,3 +18,9 @@ export {
   DISENCHANT_GOLD_PER_ITEM_LEVEL,
   DISENCHANT_MIN_GOLD,
 } from './disenchant';
+export { rollSessionDrop } from './sessionDrop';
+export {
+  SESSION_DROP_CHANCE,
+  SESSION_DROP_FULL_EP,
+  SESSION_RARITY_WEIGHTS,
+} from './constants';

@@ -313,3 +313,48 @@ export const REROLL_COST_MULTIPLIER_BY_RARITY: Readonly<Record<Rarity, number>> 
  * affordable early.
  */
 export const REROLL_COST_ESCALATION = 1.55;
+
+/* -------------------------------------------------------------------------- *
+ * TRAINING DROPS — ENGINE_VERSION 0.9.0
+ * -------------------------------------------------------------------------- */
+
+/**
+ * EP at which a session reaches its full drop chance.
+ *
+ * Below this the chance scales down in proportion, so a ten-minute walk is not
+ * the same lottery ticket as an hour under the bar. Sized against real
+ * sessions: 20 minutes of lifting is about 19 EP, an hour about 48.
+ */
+export const SESSION_DROP_FULL_EP = 45;
+
+/**
+ * Chance a full-effort session drops something.
+ *
+ * ============================================================================
+ * DELIBERATELY BELOW THE COMBAT RATES, AND THAT IS THE WHOLE TUNING DECISION.
+ * ============================================================================
+ * A fight drops at `DROP_CHANCE_PVE` (0.2) or `DROP_CHANCE_PVP` (0.35), and a
+ * player can have three fights a day against roughly one session. If training
+ * dropped at the same rate it would become the efficient way to farm gear and
+ * fighting would stop mattering for loot — which is the one thing fighting is
+ * for, now that XP and gold lean towards training.
+ *
+ * At 0.15 a daily trainee sees something about twice a fortnight.
+ */
+export const SESSION_DROP_CHANCE = 0.15;
+
+/**
+ * What a session can drop.
+ *
+ * GREEN, BLUE AND PURPLE, and nothing else. No POOR, because grey from
+ * training would mean most sessions "dropped" something worthless, which is
+ * worse than dropping nothing — and no LEGENDARY, which stays the reward for
+ * fighting so that the two sources keep distinct ceilings.
+ */
+export const SESSION_RARITY_WEIGHTS: Readonly<Record<Rarity, number>> = {
+  POOR: 0,
+  UNCOMMON: 70,
+  RARE: 25,
+  EPIC: 5,
+  LEGENDARY: 0,
+};

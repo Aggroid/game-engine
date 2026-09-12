@@ -253,8 +253,26 @@ export const WEEKLY_HARD_CAP_EP = 2000;
  * EP conversion
  * -------------------------------------------------------------------------- */
 
-/** XP granted per EP. EP is the single currency of real effort; XP is its progression face. */
-export const XP_PER_EP = 1.0;
+/**
+ * XP granted per EP.
+ *
+ * ============================================================================
+ * RAISED IN 0.9.0, BECAUSE FIGHTING HAD QUIETLY OVERTAKEN TRAINING.
+ * ============================================================================
+ * At 1.0, real sessions from the field earned 24 to 60 XP — and a duel win
+ * pays 25, with three fights a day available from stamina. So a player who
+ * duelled three times could out-earn a player who trained, in a game whose
+ * entire premise is that the training is the point.
+ *
+ * At 2.0 a long session is worth about 120 XP and a short one about 48, against
+ * 75 for a full day of duelling. Training leads on any day it happens, which is
+ * the ordering the game exists to express.
+ *
+ * This does NOT change what a session is worth relative to another session:
+ * EP already scales with duration and intensity, so longer and harder has
+ * always paid more. It changes what training is worth relative to fighting.
+ */
+export const XP_PER_EP = 2.0;
 
 /** Gold granted per EP. Below XP so that gear lags levels and the shop stays a choice. */
 export const GOLD_PER_EP = 0.5;

@@ -3,7 +3,7 @@
 exports[`foldLedger — order invariance is order-independent for a ledger built from real scored workouts 1`] = `
 {
   "gold": 253,
-  "level": 5,
+  "level": 7,
   "stats": {
     "agi": 6,
     "end": 10,
@@ -12,7 +12,7 @@ exports[`foldLedger — order invariance is order-independent for a ledger built
     "str": 1,
     "vit": 0,
   },
-  "xp": 504,
+  "xp": 1007,
 }
 `;
 
