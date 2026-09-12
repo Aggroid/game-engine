@@ -303,3 +303,44 @@ export const KEY_DROP_CHANCE = 0.85;
  * boss noticeably faster than one who only trains — which is the intended shape.
  */
 export const SIGIL_DROP_CHANCE = 0.06;
+
+/* -------------------------------------------------------------------------- *
+ * Fighting a world encounter
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Critical-hit chance, in percentage points, for each rank of world creature.
+ *
+ * ============================================================================
+ * WHY A CREATURE HAS A CRIT CHANCE AT ALL, AND WHY TRASH HAS NONE.
+ * ============================================================================
+ * A world fight is resolved through `simulateDuel`, which takes two full combat
+ * sheets — and that is the whole reason a run can carry the hero's health from
+ * one fight to the next without the simulator being touched (see
+ * `encounterAsCombat`). A sheet has a `critPct` field, so every creature has to
+ * be given one.
+ *
+ * TRASH GETS ZERO, which reproduces `simulate`'s behaviour exactly: the
+ * standalone encounter table has never crit, and a player who fights a Thornling
+ * in the Wilds and a Gutter Rat from the fight button must not find that one of
+ * them is quietly more dangerous for reasons nothing explains.
+ *
+ * ELITES AND BOSSES CRIT, modestly. It is the cheapest possible way to make a
+ * hard fight feel different from a long one: the swing that takes a third of
+ * your health is what makes the extract button a real question on the next
+ * floor, and a flat damage increase never produces that moment.
+ */
+export const RANK_CRIT_PCT = {
+  TRASH: 0,
+  ELITE: 5,
+  BOSS: 8,
+} as const;
+
+/**
+ * Health a world creature recovers per turn. Zero, for all three ranks.
+ *
+ * Regeneration is what the Drowned affix APPROXIMATES with extra health, and
+ * having both would be the same idea expressed twice — with the version in this
+ * constant invisible in the battle log, since nothing renders an enemy's regen.
+ */
+export const CREATURE_REGEN = 0;

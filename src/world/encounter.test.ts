@@ -2,7 +2,7 @@ import { createRng } from '../battle/prng';
 import type { EncounterSpec } from '../contracts/types';
 import { creatureById } from './catalogue';
 import { DEPTH_ATTACK_GROWTH, DEPTH_DEFENCE_GROWTH, DEPTH_HP_GROWTH, ENCOUNTER_VARIANCE, RANK_MULTIPLIER, worldTuningIsCoherent } from './constants';
-import { rollEncounter, rollNodeEncounters } from './encounter';
+import { encounterAsCombat, rollEncounter, rollNodeEncounters } from './encounter';
 
 const TRASH: EncounterSpec = { id: 'e1', mobId: 'vw-mire-hound', rank: 'TRASH' };
 const ELITE: EncounterSpec = { id: 'e1', mobId: 'vw-mire-hound', rank: 'ELITE' };
@@ -183,5 +183,47 @@ describe('a retired creature', () => {
 
     const rolled = rollNodeEncounters(specs, 2, [], createRng(7));
     expect(rolled.map((encounter) => encounter.id)).toEqual(['a', 'c']);
+  });
+});
+
+describe('encounterAsCombat — how a run carries health without touching the simulator', () => {
+  const mob = { id: 'e1', name: 'Mire Hound', hp: 105, attack: 13, defence: 4, level: 5 };
+
+  /*
+   * `simulate()` always starts a hero at their derived maximum, so there is no
+   * way to begin a fight at nine health — which is exactly what a dungeon needs.
+   * `simulateDuel` takes two full sheets, and a sheet states its own hp. This
+   * projection is what lets a world fight go through that path instead.
+   */
+  it('projects a creature into a sheet the duel simulator accepts', () => {
+    const sheet = encounterAsCombat(mob, 'TRASH');
+    expect(sheet).toEqual({ hp: 105, attack: 13, defence: 4, critPct: 0, regen: 0, stamina: 0 });
+  });
+
+  /*
+   * A player who fights a Thornling in the Wilds and a Gutter Rat from the fight
+   * button must not find one of them quietly more dangerous. Trash reproduces
+   * `simulate`'s behaviour exactly: no crit, no regen.
+   */
+  it('gives trash no crit, matching the standalone encounter table', () => {
+    expect(encounterAsCombat(mob, 'TRASH').critPct).toBe(0);
+  });
+
+  it('lets elites and bosses crit, which is what makes a hard fight feel hard', () => {
+    expect(encounterAsCombat(mob, 'ELITE').critPct).toBeGreaterThan(0);
+    expect(encounterAsCombat(mob, 'BOSS').critPct).toBeGreaterThan(
+      encounterAsCombat(mob, 'ELITE').critPct,
+    );
+  });
+
+  it('never regenerates — that is what the Drowned affix approximates instead', () => {
+    for (const rank of ['TRASH', 'ELITE', 'BOSS'] as const) {
+      expect(encounterAsCombat(mob, rank).regen).toBe(0);
+    }
+  });
+
+  it('never starts a creature dead, whatever arithmetic produced it', () => {
+    expect(encounterAsCombat({ ...mob, hp: 0 }, 'TRASH').hp).toBe(1);
+    expect(encounterAsCombat({ ...mob, attack: -3 }, 'TRASH').attack).toBe(0);
   });
 });

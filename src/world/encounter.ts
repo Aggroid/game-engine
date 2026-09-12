@@ -1,10 +1,12 @@
-import type { Encounter, EncounterSpec } from '../contracts/types';
+import type { DerivedCombat, Encounter, EncounterRank, EncounterSpec } from '../contracts/types';
 import { affixEffect, creatureById } from './catalogue';
 import {
+  CREATURE_REGEN,
   DEPTH_ATTACK_GROWTH,
   DEPTH_DEFENCE_GROWTH,
   DEPTH_HP_GROWTH,
   ENCOUNTER_VARIANCE,
+  RANK_CRIT_PCT,
   RANK_MULTIPLIER,
 } from './constants';
 
@@ -143,4 +145,39 @@ export function rollNodeEncounters(
     if (encounter !== null) encounters.push(encounter);
   }
   return encounters;
+}
+
+/**
+ * A world creature as a full combat sheet.
+ *
+ * ============================================================================
+ * THIS IS HOW A RUN CARRIES HEALTH ACROSS FIGHTS WITHOUT TOUCHING THE SIMULATOR.
+ * ============================================================================
+ * The design says `choosePath` "calls `simulate()` once per encounter carrying
+ * HP forward" — but `simulate(hero, encounter, seed)` derives the hero's health
+ * from their stats and always starts them at full. There is no way to begin a
+ * fight at nine health, which is exactly what a dungeon needs.
+ *
+ * `simulateDuel(challenger, defender, encounterId, seed)` already takes two
+ * `DerivedCombat` sheets, and a sheet states its own `hp`. So a world fight is
+ * run through the DUEL path with the hero's carried health in their sheet and
+ * the creature projected into a sheet by this function. Nothing in `src/battle`
+ * changes, `SIM_VERSION` does not move, and no stored log becomes unreplayable.
+ *
+ * The projection reproduces `simulate`'s semantics for trash exactly: zero crit,
+ * zero regen. Elites and bosses crit modestly, which is the cheapest way to make
+ * a hard fight feel different from a long one.
+ *
+ * `stamina` is set to zero because the duel simulator does not read it — stamina
+ * is spent by the EXISTENCE of a battle row, never inside a fight.
+ */
+export function encounterAsCombat(encounter: Encounter, rank: EncounterRank): DerivedCombat {
+  return {
+    hp: Math.max(1, Math.round(encounter.hp)),
+    attack: Math.max(0, Math.round(encounter.attack)),
+    defence: Math.max(0, Math.round(encounter.defence)),
+    critPct: RANK_CRIT_PCT[rank] ?? 0,
+    regen: CREATURE_REGEN,
+    stamina: 0,
+  };
 }

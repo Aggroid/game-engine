@@ -30,7 +30,7 @@ export {
   zonesAreCoherent,
 } from './catalogue';
 
-export { rollEncounter, rollNodeEncounters } from './encounter';
+export { encounterAsCombat, rollEncounter, rollNodeEncounters } from './encounter';
 export { affixesForWeek, floorCountForTier, generateDungeon } from './generate';
 export { hashToSeed, partSeed } from './seed';
 export { rollSessionCurrency } from './currency';
@@ -38,6 +38,7 @@ export { rollSessionCurrency } from './currency';
 export {
   AFFIXES_PER_WEEK,
   BASE_FLOOR_COUNT,
+  CREATURE_REGEN,
   CURRENCY_FULL_EP,
   DEPTH_ATTACK_GROWTH,
   DEPTH_DEFENCE_GROWTH,
@@ -52,6 +53,7 @@ export {
   NODE_WEIGHT,
   PACK_SIZE_MAX,
   PACK_SIZE_MIN,
+  RANK_CRIT_PCT,
   RANK_MULTIPLIER,
   REST_HEAL_SHARE,
   SIGIL_DROP_CHANCE,
