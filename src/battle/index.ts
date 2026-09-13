@@ -21,3 +21,5 @@ export {
   DUEL_GOLD_PER_XP,
 } from './duelReward';
 export * from './constants';
+
+export { clampResist, resistanceAgainst } from './resist';

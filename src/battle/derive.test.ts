@@ -4,6 +4,7 @@
  * changes which stat feeds attack.
  */
 import {
+  DAMAGE_TYPES,
   HERO_CLASSES,
   STAT_KEYS,
   type EquippedItems,
@@ -18,6 +19,7 @@ import {
   ATTACK_PER_PRIMARY,
   ATTACK_PER_LEVEL,
   CLASS_BASE_STATS,
+  CLASS_DAMAGE_TYPE,
   DEFENCE_PER_LEVEL,
   DODGE_PCT_BASE,
   DODGE_PCT_PER_AGI,
@@ -78,6 +80,13 @@ describe('deriveCombat', () => {
       regen: Math.round(stat('spi') * REGEN_PER_SPI),
       stamina: Math.round(STAMINA_BASE + stat('end') * STAMINA_PER_END),
       dodgePct: DODGE_PCT_BASE + stat('agi') * DODGE_PCT_PER_AGI,
+      /*
+       * A hero with no weapon falls back to their class's school, and a hero
+       * wearing nothing wards nothing. Both stated rather than omitted: an
+       * absent `damageType` would mean the sheet did not know, and it does.
+       */
+      damageType: CLASS_DAMAGE_TYPE[hero.heroClass],
+      resistance: {},
     });
   });
 
@@ -202,10 +211,19 @@ describe('deriveCombat', () => {
       level: 0,
       stats: { str: -5, agi: -5, end: -5, vit: -5, foc: -5, spi: -5 },
     });
-    const derived = deriveCombat(nothing);
-    for (const value of Object.values(derived)) {
+    const { damageType, resistance, ...numbers } = deriveCombat(nothing);
+
+    for (const value of Object.values(numbers)) {
       expect(value).toBeGreaterThanOrEqual(0);
     }
+
+    /*
+     * The two non-numeric fields, checked for what they actually promise rather
+     * than swept into a numeric loop that would have passed a string as
+     * "greater than or equal to zero" only by accident.
+     */
+    expect(DAMAGE_TYPES).toContain(damageType);
+    expect(resistance).toEqual({});
   });
 });
 
@@ -235,12 +253,35 @@ describe('deriveCombat with gear', () => {
     expect(geared.stamina).toBeGreaterThanOrEqual(bare.stamina);
   });
 
-  it('matches deriving from stats that already had the gear applied', () => {
+  /**
+   * ============================================================================
+   * THE STAT HALF STILL MATCHES. THE RESISTANCE HALF CANNOT, AND MUST NOT.
+   * ============================================================================
+   * `applyGear` folds an item's `statBonus` into a stat line, so a hero handed
+   * pre-geared stats derives the same hp, attack, defence, crit, regen, stamina
+   * and dodge as one handed the gear itself. That equivalence is what makes
+   * `applyGear` safe to use anywhere.
+   *
+   * RESISTANCE IS NOT A STAT and deliberately does not fold into one — it is a
+   * property of the pieces being worn, which is exactly why a hero who was
+   * simply GIVEN those numbers is not wearing anything and wards nothing. If
+   * these two ever agreed on resistance it would mean resistance had become
+   * derivable from stats, and the gear you are wearing would have stopped
+   * mattering to it.
+   */
+  it('matches deriving from stats that already had the gear applied, stat for stat', () => {
     const hero = makeHero();
     const equipped = fullSet(IRONBOUND_SET_ID);
     const preGeared = makeHero({ stats: applyGear(hero.stats, equipped) });
 
-    expect(deriveCombat(hero, equipped)).toEqual(deriveCombat(preGeared));
+    const { resistance: gearedResist, ...gearedStats } = deriveCombat(hero, equipped);
+    const { resistance: bareResist, ...bareStats } = deriveCombat(preGeared);
+
+    expect(gearedStats).toEqual(bareStats);
+
+    // And the halves that cannot match, do not — stated rather than elided.
+    expect(gearedResist).not.toEqual(bareResist);
+    expect(bareResist).toEqual({});
   });
 
   it('never writes gear into the hero — earned stats stay the fold of the ledger', () => {

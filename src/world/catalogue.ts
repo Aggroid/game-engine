@@ -37,8 +37,10 @@
 import type {
   Affix,
   BossPhase,
+  DamageType,
   Encounter,
   EncounterRank,
+  ResistanceBlock,
   Zone,
 } from '../contracts/types';
 
@@ -63,6 +65,16 @@ interface CreatureRow {
   hp: number;
   attack: number;
   defence: number;
+  /**
+   * The school this creature's blows belong to. `PHYSICAL` when absent.
+   *
+   * A ZONE'S IDENTITY IS ALSO ITS SCHOOL. The Rimewood is frozen, so its
+   * creatures deal frost and shrug it off — which is what makes "what should I
+   * be wearing down there" a question with an answer.
+   */
+  damageType?: DamageType;
+  /** What this creature shrugs off, by school. Absent means it resists nothing. */
+  resistance?: ResistanceBlock;
   /**
    * Phases, for a BOSS and only a BOSS.
    *
@@ -91,14 +103,14 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
   { id: 'vw-rootbound-husk', name: 'Rootbound Husk', rank: 'TRASH', level: 4, hp: 95, attack: 9, defence: 4 },
   { id: 'vw-mire-hound', name: 'Mire Hound', rank: 'TRASH', level: 5, hp: 105, attack: 13, defence: 4 },
   { id: 'vw-fen-stalker', name: 'Fen Stalker', rank: 'TRASH', level: 7, hp: 140, attack: 17, defence: 6 },
-  { id: 'vw-warden-of-reeds', name: 'Warden of Reeds', rank: 'TRASH', level: 9, hp: 190, attack: 20, defence: 9 },
+  { id: 'vw-warden-of-reeds', name: 'Warden of Reeds', rank: 'TRASH', level: 9, hp: 190, attack: 20, defence: 9, resistance: { FROST: 10 } },
 
   /* ---- Verdant Wastes: named rares -------------------------------------- */
   // Rares are ELITE-ranked but are NOT scaled by depth: they are fought where
   // they stand, on a per-player timer, and their whole job is to be a fixed
   // known quantity that a player can decide they are ready for.
   { id: 'vw-gloomstag', name: 'Gloomstag', rank: 'ELITE', level: 6, hp: 260, attack: 18, defence: 7 },
-  { id: 'vw-old-mirebrood', name: 'Old Mirebrood', rank: 'ELITE', level: 9, hp: 340, attack: 24, defence: 10 },
+  { id: 'vw-old-mirebrood', name: 'Old Mirebrood', rank: 'ELITE', level: 9, hp: 340, attack: 24, defence: 10, damageType: 'SHADOW', resistance: { FROST: 15 } },
 
   /* ---- Verdant Wastes: the boss ----------------------------------------- */
   /*
@@ -119,6 +131,13 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
     hp: 480,
     attack: 26,
     defence: 12,
+    /*
+     * A DROWNED OAK BURNS BADLY AND DROWNS WELL. Fire is its answer and frost is
+     * not — which is the first time in the game that what you are holding
+     * matters more than how big its numbers are.
+     */
+    damageType: 'FROST',
+    resistance: { FROST: 35, PHYSICAL: 10 },
     phases: [
       { name: 'Rooted', hpShare: 0.45, attackMultiplier: 1, defenceMultiplier: 1.2 },
       { name: 'Splintering', hpShare: 0.35, attackMultiplier: 1.35, defenceMultiplier: 0.8 },
@@ -139,11 +158,11 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
   { id: 'ar-ashen-drudge', name: 'Ashen Drudge', rank: 'TRASH', level: 12, hp: 250, attack: 25, defence: 11 },
   { id: 'ar-road-warden', name: 'Road Warden', rank: 'TRASH', level: 14, hp: 320, attack: 30, defence: 14 },
   { id: 'ar-slagback-boar', name: 'Slagback Boar', rank: 'TRASH', level: 16, hp: 400, attack: 36, defence: 15 },
-  { id: 'ar-kiln-ghoul', name: 'Kiln Ghoul', rank: 'TRASH', level: 18, hp: 480, attack: 40, defence: 18 },
+  { id: 'ar-kiln-ghoul', name: 'Kiln Ghoul', rank: 'TRASH', level: 18, hp: 480, attack: 40, defence: 18, damageType: 'FIRE', resistance: { FIRE: 20 } },
   { id: 'ar-caravan-wraith', name: 'Caravan Wraith', rank: 'TRASH', level: 19, hp: 560, attack: 44, defence: 20 },
 
   /* ---- Ashen Road: named rares ------------------------------------------ */
-  { id: 'ar-emberjack', name: 'Emberjack', rank: 'ELITE', level: 15, hp: 700, attack: 38, defence: 16 },
+  { id: 'ar-emberjack', name: 'Emberjack', rank: 'ELITE', level: 15, hp: 700, attack: 38, defence: 16, damageType: 'FIRE', resistance: { FIRE: 30 } },
   { id: 'ar-the-long-mule', name: 'The Long Mule', rank: 'ELITE', level: 18, hp: 950, attack: 42, defence: 22 },
 
   /* ---- Ashen Road: the boss --------------------------------------------- */
@@ -155,6 +174,8 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
     hp: 1400,
     attack: 52,
     defence: 24,
+    damageType: 'FIRE',
+    resistance: { FIRE: 45 },
     phases: [
       { name: 'Smouldering', hpShare: 0.4, attackMultiplier: 1, defenceMultiplier: 1.25 },
       { name: 'Catching', hpShare: 0.35, attackMultiplier: 1.4, defenceMultiplier: 0.85 },
@@ -170,12 +191,12 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
   { id: 'sc-wreck-crab', name: 'Wreck Crab', rank: 'TRASH', level: 22, hp: 720, attack: 50, defence: 30 },
   { id: 'sc-drowned-oarsman', name: 'Drowned Oarsman', rank: 'TRASH', level: 24, hp: 860, attack: 58, defence: 26 },
   { id: 'sc-salt-flayer', name: 'Salt Flayer', rank: 'TRASH', level: 26, hp: 1000, attack: 66, defence: 29 },
-  { id: 'sc-tide-priest', name: 'Tide Priest', rank: 'TRASH', level: 28, hp: 1180, attack: 74, defence: 33 },
+  { id: 'sc-tide-priest', name: 'Tide Priest', rank: 'TRASH', level: 28, hp: 1180, attack: 74, defence: 33, damageType: 'FROST', resistance: { FROST: 25 } },
   { id: 'sc-hullbreaker', name: 'Hullbreaker', rank: 'TRASH', level: 29, hp: 1400, attack: 82, defence: 38 },
 
   /* ---- Sundered Coast: named rares -------------------------------------- */
   { id: 'sc-the-grey-mother', name: 'The Grey Mother', rank: 'ELITE', level: 25, hp: 1900, attack: 68, defence: 32 },
-  { id: 'sc-anchorsaint', name: 'Anchorsaint', rank: 'ELITE', level: 28, hp: 2400, attack: 78, defence: 42 },
+  { id: 'sc-anchorsaint', name: 'Anchorsaint', rank: 'ELITE', level: 28, hp: 2400, attack: 78, defence: 42, damageType: 'HOLY', resistance: { FROST: 30, HOLY: 20 } },
 
   /* ---- Sundered Coast: the boss ----------------------------------------- */
   {
@@ -186,6 +207,12 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
     hp: 3500,
     attack: 96,
     defence: 44,
+    /*
+     * A STANDING WAVE. Lightning runs through salt water, so it is what this
+     * throws — and frost is what it laughs at.
+     */
+    damageType: 'LIGHTNING',
+    resistance: { FROST: 50, LIGHTNING: 30 },
     phases: [
       { name: 'Rising', hpShare: 0.35, attackMultiplier: 0.9, defenceMultiplier: 1.3 },
       { name: 'Breaking', hpShare: 0.4, attackMultiplier: 1.35, defenceMultiplier: 0.9 },
@@ -200,13 +227,13 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
   { id: 'rw-frostbitten-elk', name: 'Frostbitten Elk', rank: 'TRASH', level: 31, hp: 1500, attack: 88, defence: 42 },
   { id: 'rw-rime-stalker', name: 'Rime Stalker', rank: 'TRASH', level: 32, hp: 1700, attack: 98, defence: 44 },
   { id: 'rw-hollow-pine', name: 'Hollow Pine', rank: 'TRASH', level: 34, hp: 2100, attack: 104, defence: 56 },
-  { id: 'rw-glass-wolf', name: 'Glass Wolf', rank: 'TRASH', level: 36, hp: 2400, attack: 122, defence: 50 },
-  { id: 'rw-winter-warden', name: 'Winter Warden', rank: 'TRASH', level: 38, hp: 2800, attack: 134, defence: 62 },
+  { id: 'rw-glass-wolf', name: 'Glass Wolf', rank: 'TRASH', level: 36, hp: 2400, attack: 122, defence: 50, damageType: 'FROST', resistance: { FROST: 40 } },
+  { id: 'rw-winter-warden', name: 'Winter Warden', rank: 'TRASH', level: 38, hp: 2800, attack: 134, defence: 62, damageType: 'FROST', resistance: { FROST: 45 } },
   { id: 'rw-the-still-hunter', name: 'The Still Hunter', rank: 'TRASH', level: 39, hp: 3200, attack: 150, defence: 70 },
 
   /* ---- The Rimewood: named rares ---------------------------------------- */
   { id: 'rw-snowblind', name: 'Snowblind', rank: 'ELITE', level: 35, hp: 4200, attack: 128, defence: 58 },
-  { id: 'rw-the-long-winter', name: 'The Long Winter', rank: 'ELITE', level: 38, hp: 5400, attack: 142, defence: 72 },
+  { id: 'rw-the-long-winter', name: 'The Long Winter', rank: 'ELITE', level: 38, hp: 5400, attack: 142, defence: 72, damageType: 'FROST', resistance: { FROST: 55, PHYSICAL: 15 } },
 
   /* ---- The Rimewood: the boss ------------------------------------------- *
    * FOUR PHASES, not three. The last authored zone should end on something
@@ -222,6 +249,14 @@ const CREATURE_ROWS: readonly CreatureRow[] = [
     hp: 8000,
     attack: 165,
     defence: 78,
+    /*
+     * AT THE CAP, AND NOT ABOVE IT. Sixty is the ceiling the simulator applies,
+     * so authoring more would be a number that read as meaningful and did
+     * nothing. Frost is simply the wrong thing to bring here; fire is the answer,
+     * and the whole zone has been saying so for ten levels.
+     */
+    damageType: 'FROST',
+    resistance: { FROST: 60, PHYSICAL: 20, SHADOW: 15 },
     phases: [
       { name: 'Sleeping', hpShare: 0.3, attackMultiplier: 0.85, defenceMultiplier: 1.4 },
       { name: 'Stirring', hpShare: 0.3, attackMultiplier: 1.15, defenceMultiplier: 1.1 },
@@ -246,7 +281,18 @@ const CREATURES_BY_ID: Readonly<Record<string, CreatureRow>> = Object.freeze(
 export function creatureById(creatureId: string): Encounter | null {
   const row = CREATURES_BY_ID[creatureId];
   if (row === undefined) return null;
-  return { id: row.id, name: row.name, hp: row.hp, attack: row.attack, defence: row.defence, level: row.level };
+  return {
+    id: row.id,
+    name: row.name,
+    hp: row.hp,
+    attack: row.attack,
+    defence: row.defence,
+    level: row.level,
+    ...(row.damageType === undefined ? {} : { damageType: row.damageType }),
+    // Copied, not shared: a caller that mutated an encounter must not retune the
+    // catalogue for everybody else.
+    ...(row.resistance === undefined ? {} : { resistance: { ...row.resistance } }),
+  };
 }
 
 /** A creature's rank, or `null` when the id is unknown. */
@@ -302,6 +348,13 @@ export function bossPhaseEncounters(creatureId: string): Encounter[] | null {
     attack: Math.max(0, Math.round(row.attack * phase.attackMultiplier)),
     defence: Math.max(0, Math.round(row.defence * phase.defenceMultiplier)),
     level: row.level,
+    /*
+     * THE SCHOOL AND THE WARDS SURVIVE EVERY PHASE. A boss that dealt frost in
+     * phase one and physical in phase two would make the gear a player chose on
+     * the way in wrong halfway through, for reasons nothing announced.
+     */
+    ...(row.damageType === undefined ? {} : { damageType: row.damageType }),
+    ...(row.resistance === undefined ? {} : { resistance: { ...row.resistance } }),
   }));
 }
 

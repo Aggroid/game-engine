@@ -35,6 +35,7 @@ import {
   MAX_TURNS,
   MIN_DAMAGE,
 } from './constants';
+import { clampResist, resistanceAgainst } from './resist';
 import { deriveCombat } from './derive';
 import { SIM_VERSION } from './version';
 import { createRng } from './prng';
@@ -82,6 +83,20 @@ export function simulate(hero: Hero, encounter: Encounter, seed: number): Battle
   const enemyAttack = toInt(encounter.attack);
   const enemyDefence = toInt(encounter.defence);
 
+  /*
+   * RESOLVED ONCE, BEFORE THE FIRST BLOW. Resistance cannot change mid-fight —
+   * nothing in a battle equips anything — so looking it up per strike would be
+   * sixty lookups for one answer, and would invite somebody to make it mutable.
+   */
+  const enemyResistToHero = resistanceAgainst(
+    encounter.resistance,
+    combat.damageType ?? 'PHYSICAL',
+  );
+  const heroResistToEnemy = resistanceAgainst(
+    combat.resistance,
+    encounter.damageType ?? 'PHYSICAL',
+  );
+
   const events: BattleEvent[] = [];
   let heroHp = heroMaxHp;
   let enemyHp = toInt(encounter.hp);
@@ -98,7 +113,14 @@ export function simulate(hero: Hero, encounter: Encounter, seed: number): Battle
    * Shared by both sides so the two directions of combat cannot drift apart, and so the
    * RNG draws exactly two values per strike whichever side is swinging.
    */
-  const strike = (attacker: BattleActor, attack: number, defence: number, critPct: number): void => {
+  const strike = (
+    attacker: BattleActor,
+    attack: number,
+    defence: number,
+    critPct: number,
+    /** The defender's resistance to THIS attacker's school, already resolved. */
+    resistPct: number,
+  ): void => {
     // Draw order is part of the contract with the seed: variance first, then crit. Both are
     // drawn unconditionally — skipping the crit roll when it cannot land would make the
     // stream position depend on a branch, and every log written before that change would
@@ -107,9 +129,27 @@ export function simulate(hero: Hero, encounter: Encounter, seed: number): Battle
     const crit = rng() * 100 < critPct;
 
     const swing = Math.max(MIN_DAMAGE, Math.round(attack * variance * (crit ? CRIT_MULTIPLIER : 1)));
-    // Floored at MIN_DAMAGE so a high-defence opponent slows a fight down instead of
-    // stalling it: without this floor, defence >= attack means sixty turns of nothing.
-    const damage = Math.max(MIN_DAMAGE, swing - defence);
+    /*
+     * DEFENCE SUBTRACTS, THEN RESISTANCE SCALES. The order matters and it is the
+     * whole reason the two are different stats.
+     *
+     * Flat-then-percentage means resistance is worth most against the blows
+     * defence barely dents — the crits and the boss swings — which is exactly the
+     * case defence handles badly. The other order would make resistance a
+     * multiplier on whatever defence happened to leave, so a high-defence hero
+     * would get less out of the same warded gear than a low-defence one, which
+     * is backwards.
+     *
+     * NO NEW RNG DRAW. Resistance is arithmetic on a blow that has already been
+     * rolled, so the stream position is untouched — the seed contract is the same
+     * one it has always been, and this change moves `SIM_VERSION` for the damage
+     * it produces rather than for the order it draws in.
+     */
+    const afterDefence = Math.max(MIN_DAMAGE, swing - defence);
+    const resisted = Math.round(afterDefence * (1 - clampResist(resistPct) / 100));
+    // Floored at MIN_DAMAGE so a heavily warded opponent slows a fight down instead of
+    // stalling it: without this floor, enough resistance means sixty turns of nothing.
+    const damage = Math.max(MIN_DAMAGE, resisted);
     const absorbed = swing - damage;
 
     const defender: BattleActor = attacker === 'HERO' ? 'ENEMY' : 'HERO';
@@ -132,7 +172,7 @@ export function simulate(hero: Hero, encounter: Encounter, seed: number): Battle
   while (turn < MAX_TURNS) {
     turn += 1;
 
-    strike('HERO', combat.attack, enemyDefence, combat.critPct);
+    strike('HERO', combat.attack, enemyDefence, combat.critPct, enemyResistToHero);
     if (enemyHp === 0) {
       emit('ENEMY', 'FAINT', 0);
       emit('HERO', 'VICTORY', 0);
@@ -141,7 +181,7 @@ export function simulate(hero: Hero, encounter: Encounter, seed: number): Battle
       break;
     }
 
-    strike('ENEMY', enemyAttack, combat.defence, ENEMY_CRIT_PCT);
+    strike('ENEMY', enemyAttack, combat.defence, ENEMY_CRIT_PCT, heroResistToEnemy);
     if (heroHp === 0) {
       emit('HERO', 'FAINT', 0);
       emit('HERO', 'DEFEAT', 0);

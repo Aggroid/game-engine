@@ -24,8 +24,9 @@
  * IDS ARE FOREVER. They are referenced by rows in the players' inventories, so a row may be
  * retuned or renamed but its `id` must never be reused for a different item.
  */
-import type { Item, ItemSlot, Rarity, StatKey } from '../contracts/types';
+import type { DamageType, Item, ItemSlot, Rarity, ResistanceBlock, StatKey } from '../contracts/types';
 
+import { RESIST_CAP_PCT } from '../battle/constants';
 import { LEVEL_REQUIREMENT_BY_RARITY, SHOP_PRICE_BY_RARITY } from './constants';
 
 /** The `setId` of the strength set — named because `setBonuses.ts` keys its bonuses off it. */
@@ -48,6 +49,24 @@ interface CatalogueRow {
   rarity: Rarity;
   statBonus: Readonly<Partial<Record<StatKey, number>>>;
   setId?: string;
+  /**
+   * For a WEAPON: the school its wielder's blows become. Absent means PHYSICAL.
+   *
+   * On armour it is meaningless and must not be set — `catalogueIsCoherent`
+   * checks that, because a frost helm that quietly did nothing would be a lie
+   * the item card would repeat.
+   */
+  damageType?: DamageType;
+  /**
+   * What wearing this wards off, in percentage points, by school.
+   *
+   * ON THE TEMPLATE, NOT ON THE ROLL. Two drops of one helm have different stats
+   * and the same resistance: a roll decides how GOOD an item is, resistance
+   * decides what KIND it is. Rolling it would make "frost-warded" a property of
+   * an instance rather than of a piece of gear, and a player could not go
+   * looking for one.
+   */
+  resistance?: Readonly<ResistanceBlock>;
 }
 
 /**
@@ -68,41 +87,41 @@ const CATALOGUE_ROWS: readonly CatalogueRow[] = [
 
   // UNCOMMON — the first real upgrade, and the first gear a player buys rather than is given.
   { id: 'balanced-kettlebell', name: 'Balanced Kettlebell', slot: 'weapon', rarity: 'UNCOMMON', statBonus: { str: 4, vit: 2 } },
-  { id: 'focus-visor', name: 'Focus Visor', slot: 'head', rarity: 'UNCOMMON', statBonus: { foc: 4, spi: 2 } },
-  { id: 'compression-harness', name: 'Compression Harness', slot: 'chest', rarity: 'UNCOMMON', statBonus: { vit: 4, end: 2 } },
+  { id: 'focus-visor', name: 'Focus Visor', slot: 'head', rarity: 'UNCOMMON', statBonus: { foc: 4, spi: 2 }, resistance: { SHADOW: 3 } },
+  { id: 'compression-harness', name: 'Compression Harness', slot: 'chest', rarity: 'UNCOMMON', statBonus: { vit: 4, end: 2 }, resistance: { PHYSICAL: 3 } },
   { id: 'grip-tape-gloves', name: 'Grip Tape Gloves', slot: 'hands', rarity: 'UNCOMMON', statBonus: { str: 3, agi: 3 } },
   { id: 'carbon-trainers', name: 'Carbon Trainers', slot: 'legs', rarity: 'UNCOMMON', statBonus: { agi: 4, end: 2 } },
-  { id: 'heart-rate-strap', name: 'Heart Rate Strap', slot: 'trinket', rarity: 'UNCOMMON', statBonus: { end: 4, foc: 2 } },
+  { id: 'heart-rate-strap', name: 'Heart Rate Strap', slot: 'trinket', rarity: 'UNCOMMON', statBonus: { end: 4, foc: 2 }, resistance: { FIRE: 3 } },
 
   // RARE — the `ironbound` set. Complete: one piece in every slot. STR and VIT, and at six
   // pieces it converts real strength work better (see `setBonuses.ts`).
   // NOT part of the set — see SET_BONUS_FULL_PIECES. The weapon slot is left
   // free on purpose, so the highest-impact item is always a choice rather than
   // a set requirement.
-  { id: 'ironbound-bar', name: 'Ironbound Bar', slot: 'weapon', rarity: 'RARE', statBonus: { str: 7, vit: 3 } },
-  { id: 'ironbound-helm', name: 'Ironbound Helm', slot: 'head', rarity: 'RARE', statBonus: { vit: 6, foc: 3 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-plate', name: 'Ironbound Plate', slot: 'chest', rarity: 'RARE', statBonus: { vit: 8, str: 2 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-grips', name: 'Ironbound Grips', slot: 'hands', rarity: 'RARE', statBonus: { str: 6, agi: 2 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-greaves', name: 'Ironbound Greaves', slot: 'legs', rarity: 'RARE', statBonus: { vit: 5, end: 5 }, setId: IRONBOUND_SET_ID },
-  { id: 'ironbound-sigil', name: 'Ironbound Sigil', slot: 'trinket', rarity: 'RARE', statBonus: { str: 5, spi: 3 }, setId: IRONBOUND_SET_ID },
+  { id: 'ironbound-bar', name: 'Ironbound Bar', slot: 'weapon', rarity: 'RARE', statBonus: { str: 7, vit: 3 }, damageType: 'PHYSICAL' },
+  { id: 'ironbound-helm', name: 'Ironbound Helm', slot: 'head', rarity: 'RARE', statBonus: { vit: 6, foc: 3 }, setId: IRONBOUND_SET_ID, resistance: { PHYSICAL: 5 } },
+  { id: 'ironbound-plate', name: 'Ironbound Plate', slot: 'chest', rarity: 'RARE', statBonus: { vit: 8, str: 2 }, setId: IRONBOUND_SET_ID, resistance: { PHYSICAL: 8 } },
+  { id: 'ironbound-grips', name: 'Ironbound Grips', slot: 'hands', rarity: 'RARE', statBonus: { str: 6, agi: 2 }, setId: IRONBOUND_SET_ID, resistance: { PHYSICAL: 4 } },
+  { id: 'ironbound-greaves', name: 'Ironbound Greaves', slot: 'legs', rarity: 'RARE', statBonus: { vit: 5, end: 5 }, setId: IRONBOUND_SET_ID, resistance: { PHYSICAL: 5 } },
+  { id: 'ironbound-sigil', name: 'Ironbound Sigil', slot: 'trinket', rarity: 'RARE', statBonus: { str: 5, spi: 3 }, setId: IRONBOUND_SET_ID, resistance: { PHYSICAL: 3, SHADOW: 4 } },
 
   // EPIC — the `windrunner` set. Complete, AGI and END, and at six pieces it converts
   // real cardio better. The mirror image of `ironbound`, so the two sets pull a player
   // towards two genuinely different training weeks.
   // Weapon slot deliberately off-set; see the note on `ironbound-bar`.
-  { id: 'windrunner-baton', name: 'Windrunner Baton', slot: 'weapon', rarity: 'EPIC', statBonus: { agi: 9, end: 4 } },
-  { id: 'windrunner-cowl', name: 'Windrunner Cowl', slot: 'head', rarity: 'EPIC', statBonus: { foc: 8, agi: 4 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-shell', name: 'Windrunner Shell', slot: 'chest', rarity: 'EPIC', statBonus: { end: 9, vit: 4 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-mitts', name: 'Windrunner Mitts', slot: 'hands', rarity: 'EPIC', statBonus: { agi: 8, str: 3 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-striders', name: 'Windrunner Striders', slot: 'legs', rarity: 'EPIC', statBonus: { agi: 7, end: 7 }, setId: WINDRUNNER_SET_ID },
-  { id: 'windrunner-compass', name: 'Windrunner Compass', slot: 'trinket', rarity: 'EPIC', statBonus: { end: 8, spi: 4 }, setId: WINDRUNNER_SET_ID },
+  { id: 'windrunner-baton', name: 'Windrunner Baton', slot: 'weapon', rarity: 'EPIC', statBonus: { agi: 9, end: 4 }, damageType: 'LIGHTNING' },
+  { id: 'windrunner-cowl', name: 'Windrunner Cowl', slot: 'head', rarity: 'EPIC', statBonus: { foc: 8, agi: 4 }, setId: WINDRUNNER_SET_ID, resistance: { FROST: 6, LIGHTNING: 4 } },
+  { id: 'windrunner-shell', name: 'Windrunner Shell', slot: 'chest', rarity: 'EPIC', statBonus: { end: 9, vit: 4 }, setId: WINDRUNNER_SET_ID, resistance: { FROST: 9, LIGHTNING: 5 } },
+  { id: 'windrunner-mitts', name: 'Windrunner Mitts', slot: 'hands', rarity: 'EPIC', statBonus: { agi: 8, str: 3 }, setId: WINDRUNNER_SET_ID, resistance: { FROST: 5 } },
+  { id: 'windrunner-striders', name: 'Windrunner Striders', slot: 'legs', rarity: 'EPIC', statBonus: { agi: 7, end: 7 }, setId: WINDRUNNER_SET_ID, resistance: { FROST: 6, PHYSICAL: 3 } },
+  { id: 'windrunner-compass', name: 'Windrunner Compass', slot: 'trinket', rarity: 'EPIC', statBonus: { end: 8, spi: 4 }, setId: WINDRUNNER_SET_ID, resistance: { LIGHTNING: 8 } },
 
   // LEGENDARY — drop-only, unpriced, and deliberately NOT a set: it is the reward for years of
   // real training, not the completion of a collection. Three pieces only, so the tier stays
   // uncommon in fact and not just in its weight.
-  { id: 'atlas-bar', name: 'Atlas Bar', slot: 'weapon', rarity: 'LEGENDARY', statBonus: { str: 14, vit: 6 } },
-  { id: 'aegis-of-the-long-haul', name: 'Aegis of the Long Haul', slot: 'chest', rarity: 'LEGENDARY', statBonus: { vit: 14, end: 8 } },
-  { id: 'metronome-of-the-sixth-set', name: 'Metronome of the Sixth Set', slot: 'trinket', rarity: 'LEGENDARY', statBonus: { foc: 10, spi: 10 } },
+  { id: 'atlas-bar', name: 'Atlas Bar', slot: 'weapon', rarity: 'LEGENDARY', statBonus: { str: 14, vit: 6 }, damageType: 'PHYSICAL' },
+  { id: 'aegis-of-the-long-haul', name: 'Aegis of the Long Haul', slot: 'chest', rarity: 'LEGENDARY', statBonus: { vit: 14, end: 8 }, resistance: { PHYSICAL: 10, FIRE: 6, FROST: 6 } },
+  { id: 'metronome-of-the-sixth-set', name: 'Metronome of the Sixth Set', slot: 'trinket', rarity: 'LEGENDARY', statBonus: { foc: 10, spi: 10 }, resistance: { SHADOW: 10, HOLY: 10 } },
 ];
 
 /**
@@ -123,6 +142,10 @@ function toItem(row: CatalogueRow): Item {
     statBonus: { ...row.statBonus },
     levelRequirement: LEVEL_REQUIREMENT_BY_RARITY[row.rarity],
     ...(row.setId !== undefined ? { setId: row.setId } : {}),
+    ...(row.damageType !== undefined ? { damageType: row.damageType } : {}),
+    // Copied, not shared: a caller that mutated a returned item must not be able
+    // to retune the catalogue for everybody else in the process.
+    ...(row.resistance !== undefined ? { resistance: { ...row.resistance } } : {}),
     ...(price !== null ? { price } : {}),
   };
 }
@@ -187,4 +210,36 @@ export const SET_DISPLAY_NAME: Readonly<Record<string, string>> = {
 /** The set's display name, falling back to the id so an unknown set degrades rather than blanks. */
 export function setDisplayName(setId: string): string {
   return SET_DISPLAY_NAME[setId] ?? setId;
+}
+
+/**
+ * Whether every item's school and resistance are things it can actually have.
+ *
+ * ============================================================================
+ * CONTENT FAILS QUIETLY, WHICH IS WHY THIS IS A FUNCTION AND NOT A COMMENT.
+ * ============================================================================
+ * A `damageType` on a helm does nothing: only the WEAPON decides a hero's
+ * school, so an authored "frost helm" would sit in the catalogue looking
+ * meaningful, render on an item card as if it did something, and change no
+ * fight. Nothing would throw and nothing would fail — it would simply be a lie
+ * the UI repeated.
+ *
+ * A resistance above the cap is the same shape of mistake in the other
+ * direction: authored as though it mattered, silently truncated in the
+ * simulator, and impossible to notice from the numbers.
+ *
+ * Exported as a FUNCTION rather than asserted at module load, for the reason
+ * `world/constants.ts` gives: this package must not throw on import. The test
+ * suite calls it; a human authoring an item can too.
+ */
+export function catalogueSchoolsAreCoherent(): boolean {
+  return CATALOGUE_ROWS.every((row) => {
+    // Only a weapon can carry a school, because only a weapon sets one.
+    if (row.damageType !== undefined && row.slot !== 'weapon') return false;
+
+    if (row.resistance === undefined) return true;
+    return Object.values(row.resistance).every(
+      (value) => Number.isFinite(value) && value > 0 && value <= RESIST_CAP_PCT,
+    );
+  });
 }

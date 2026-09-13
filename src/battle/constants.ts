@@ -13,7 +13,7 @@
  *
  * A magic number inline in `simulate.ts` or `derive.ts` is a bug, not a style nit.
  */
-import type { HeroClass, StatBlock, StatKey } from '../contracts/types';
+import type { DamageType, HeroClass, StatBlock, StatKey } from '../contracts/types';
 
 /* -------------------------------------------------------------------------- *
  * Derived combat — see `derive.ts`
@@ -180,3 +180,51 @@ export const CLASS_BASE_STATS: Record<HeroClass, StatBlock> = {
   // No weakness, no peak — the flattest line of the five, on purpose.
   PALADIN: { str: 2, agi: 2, end: 2, vit: 3, foc: 2, spi: 2 },
 };
+
+/* -------------------------------------------------------------------------- *
+ * Damage schools and resistance
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The school a hero deals when they are holding nothing special.
+ *
+ * ============================================================================
+ * A FALLBACK, NOT THE RULE. The WEAPON decides the school; this is what is left
+ * when there is no weapon, or when the weapon is an ordinary one.
+ * ============================================================================
+ * Drawn from what each class already is in `SPECS_BY_CLASS`: a Mage's three
+ * specs are Fire, Frost and Lightning, a Priest's are Spirit, Shadow and
+ * Darkness, a Paladin leads with Holy. Warriors and Rogues have no school at all
+ * in their spec lists, and PHYSICAL is the honest answer for both rather than an
+ * element invented to give them one.
+ *
+ * MAGE DEFAULTS TO FIRE AND THAT IS A COMPROMISE, stated rather than hidden: the
+ * class has three schools and nothing stored says which spec a hero has taken —
+ * talent allocations are in the engine but no table holds one yet. When they do,
+ * this table becomes the fallback for a hero who has spent no points, and the
+ * spec decides for everyone else.
+ */
+export const CLASS_DAMAGE_TYPE: Record<HeroClass, DamageType> = {
+  WARRIOR: 'PHYSICAL',
+  MAGE: 'FIRE',
+  ROGUE: 'PHYSICAL',
+  PRIEST: 'SHADOW',
+  PALADIN: 'HOLY',
+};
+
+/**
+ * The most of a blow resistance may ever remove, in percentage points.
+ *
+ * ============================================================================
+ * SIXTY, AND THE CEILING IS THE WHOLE DESIGN.
+ * ============================================================================
+ * Resistance is a percentage, so without a cap it reaches 100 and becomes
+ * IMMUNITY — and a build immune to a school cannot lose to it. That turns gear
+ * selection from a decision into a lookup: find the boss's school, stack its
+ * resistance, win. Every interesting fight in the game would have exactly one
+ * correct answer.
+ *
+ * Sixty is high enough that stacking a school is clearly worth doing against a
+ * boss that deals it, and low enough that the fight is still a fight.
+ */
+export const RESIST_CAP_PCT = 60;

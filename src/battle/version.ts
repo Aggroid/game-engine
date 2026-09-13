@@ -15,7 +15,7 @@
  * built as ESM, where cycle resolution order differs and `SIM_VERSION` could initialise as
  * `undefined`. A dedicated leaf module removes the failure mode instead of depending on it.
  */
-export const SIM_VERSION = '0.3.0';
+export const SIM_VERSION = '0.4.0';
 
 /*
  * ============================================================================
@@ -48,6 +48,27 @@ export const SIM_VERSION = '0.3.0';
  *         the defender as an `Encounter`, which dropped their `critPct` and
  *         `regen` — so a defender could never crit and never healed, and AGI
  *         and SPI were worth nothing to the hero being attacked.
+ *
+ *  0.4.0  DAMAGE SCHOOLS AND RESISTANCE. A blow now belongs to one of six
+ *         schools, and the defender's resistance to THAT school scales it after
+ *         defence has been subtracted.
+ *
+ *         EVERY BLOW IN THE GAME CAN NOW LAND FOR A DIFFERENT NUMBER than it
+ *         did under 0.3.0 — which is exactly what this version stamp is for. A
+ *         log written before this is re-derivable only by 0.3.0's simulator, and
+ *         re-running one under 0.4.0 would produce a fight that never happened.
+ *
+ *         The stream is UNTOUCHED: still two draws per blow, variance then crit,
+ *         both unconditional. Resistance is arithmetic on a blow that has already
+ *         been rolled, so this version moves for the damage it produces rather
+ *         than for the order it draws in. A hero or encounter with no resistance
+ *         takes byte-identical damage to 0.3.0 — which is every fight fought so
+ *         far, since nothing had any until this version.
+ *
+ *         Both loops changed, through one shared `clampResist`: two copies of
+ *         what a point of resistance is worth would be two balance surfaces, and
+ *         a player would find frost resistance doing one thing against a creature
+ *         and another against a hero.
  *
  *  0.2.0  `simulateDuel` (`duel.ts`): hero versus hero with both sides' full
  *         combat sheets. Both crit on their own AGI, both regenerate on their

@@ -13,23 +13,24 @@
  * `applyGear`). Passing no equipment derives an unequipped hero, which is exactly what the
  * single-argument call has always meant.
  */
-import type { DerivedCombat, EquippedItems, Hero, StatBlock } from '../contracts/types';
+import type { DamageType, DerivedCombat, EquippedItems, Hero, ResistanceBlock, StatBlock } from '../contracts/types';
 import { withTalentCombat, withTalentStats } from '../talents/apply';
 import type { TalentAllocation } from '../talents/types';
 import { applyGear } from '../gear/equip';
 import {
   ATTACK_BASE,
+  ATTACK_PER_LEVEL,
   ATTACK_PER_PRIMARY,
   CLASS_BASE_STATS,
+  CLASS_DAMAGE_TYPE,
   CLASS_PRIMARY_STAT,
-  ATTACK_PER_LEVEL,
+  CRIT_PCT_MAX,
+  CRIT_PCT_PER_AGI,
   DEFENCE_PER_LEVEL,
+  DEFENCE_PER_VIT,
   DODGE_PCT_BASE,
   DODGE_PCT_MAX,
   DODGE_PCT_PER_AGI,
-  CRIT_PCT_MAX,
-  CRIT_PCT_PER_AGI,
-  DEFENCE_PER_VIT,
   HP_BASE,
   HP_PER_LEVEL,
   HP_PER_VIT,
@@ -48,6 +49,38 @@ import {
  */
 function toStat(value: number): number {
   return Math.max(0, Math.round(value));
+}
+
+/**
+ * Everything worn, summed into one resistance block.
+ *
+ * ============================================================================
+ * ADDITIVE ACROSS PIECES, AND UNCAPPED HERE.
+ * ============================================================================
+ * Six slots each warding 10% against frost is 60%, and that is a deliberate,
+ * expensive build — not an accident. The CAP lives in the simulator
+ * (`RESIST_CAP_PCT`) rather than here, for one reason: a block capped at
+ * derivation would be indistinguishable from one that was never stacked, so a
+ * hero sheet could not show "you are at the ceiling" and a player could not tell
+ * that a seventh warded piece would be wasted.
+ *
+ * Schools nobody warded stay ABSENT rather than zero, so a sheet lists the
+ * resistances a hero actually has instead of six rows of nothing.
+ */
+function resistanceFrom(equipped?: EquippedItems): ResistanceBlock {
+  if (equipped === undefined) return {};
+
+  const total: ResistanceBlock = {};
+  for (const item of Object.values(equipped)) {
+    if (item?.resistance === undefined) continue;
+    for (const [school, value] of Object.entries(item.resistance)) {
+      if (!Number.isFinite(value)) continue;
+      const key = school as DamageType;
+      total[key] = (total[key] ?? 0) + value;
+    }
+  }
+
+  return total;
 }
 
 /**
@@ -122,6 +155,16 @@ export function deriveCombat(
       DODGE_PCT_MAX,
       Math.max(0, DODGE_PCT_BASE + stats.agi * DODGE_PCT_PER_AGI),
     ),
+    /*
+     * THE WEAPON DECIDES THE SCHOOL, and the class is only the fallback.
+     *
+     * That is what makes an elemental weapon a choice rather than a stat stick:
+     * picking up a frost blade changes what you ARE, and therefore what resists
+     * you and what you are good against. A class-only school would make the
+     * weapon slot the one piece of gear with no identity.
+     */
+    damageType: equipped?.weapon?.damageType ?? CLASS_DAMAGE_TYPE[hero.heroClass],
+    resistance: resistanceFrom(equipped),
   };
 
   return allocation === undefined ? combat : withTalentCombat(combat, allocation);

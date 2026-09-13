@@ -57,6 +57,7 @@ import {
   MAX_TURNS,
   MIN_DAMAGE,
 } from './constants';
+import { clampResist, resistanceAgainst } from './resist';
 import { SIM_VERSION } from './version';
 import { createRng } from './prng';
 
@@ -98,6 +99,19 @@ export function simulateDuel(
   const heroMaxHp = toInt(challenger.hp);
   const enemyMaxHp = toInt(defender.hp);
 
+  /*
+   * Resolved once, before the first blow: nothing in a duel equips anything, so
+   * resistance cannot change mid-fight.
+   */
+  const defenderResistsChallenger = resistanceAgainst(
+    defender.resistance,
+    challenger.damageType ?? 'PHYSICAL',
+  );
+  const challengerResistsDefender = resistanceAgainst(
+    challenger.resistance,
+    defender.damageType ?? 'PHYSICAL',
+  );
+
   const events: BattleEvent[] = [];
   let heroHp = heroMaxHp;
   let enemyHp = enemyMaxHp;
@@ -125,6 +139,8 @@ export function simulateDuel(
     attack: number,
     defence: number,
     critPct: number,
+    /** The defender's resistance to THIS attacker's school, already resolved. */
+    resistPct: number,
   ): void => {
     const variance = 1 + (rng() * 2 - 1) * DAMAGE_VARIANCE;
     const crit = rng() * 100 < critPct;
@@ -133,7 +149,15 @@ export function simulateDuel(
       MIN_DAMAGE,
       Math.round(attack * variance * (crit ? CRIT_MULTIPLIER : 1)),
     );
-    const damage = Math.max(MIN_DAMAGE, swing - defence);
+    /*
+     * FLAT FIRST, THEN PERCENTAGE — the same order as `simulate`, through the
+     * same `clampResist`. Two copies of what a point of resistance is worth
+     * would be two balance surfaces, and a player would find frost resistance
+     * doing one thing against a creature and another against a hero.
+     */
+    const afterDefence = Math.max(MIN_DAMAGE, swing - defence);
+    const resisted = Math.round(afterDefence * (1 - clampResist(resistPct) / 100));
+    const damage = Math.max(MIN_DAMAGE, resisted);
     const absorbed = swing - damage;
 
     const defender: BattleActor = attacker === 'HERO' ? 'ENEMY' : 'HERO';
@@ -156,7 +180,13 @@ export function simulateDuel(
   while (turn < MAX_TURNS) {
     turn += 1;
 
-    strike('HERO', toInt(challenger.attack), toInt(defender.defence), challenger.critPct);
+    strike(
+      'HERO',
+      toInt(challenger.attack),
+      toInt(defender.defence),
+      challenger.critPct,
+      defenderResistsChallenger,
+    );
     if (enemyHp === 0) {
       emit('ENEMY', 'FAINT', 0);
       emit('HERO', 'VICTORY', 0);
@@ -166,7 +196,13 @@ export function simulateDuel(
     }
 
     // The defender crits on their OWN AGI. This is the whole point of the file.
-    strike('ENEMY', toInt(defender.attack), toInt(challenger.defence), defender.critPct);
+    strike(
+      'ENEMY',
+      toInt(defender.attack),
+      toInt(challenger.defence),
+      defender.critPct,
+      challengerResistsDefender,
+    );
     if (heroHp === 0) {
       emit('HERO', 'FAINT', 0);
       emit('HERO', 'DEFEAT', 0);

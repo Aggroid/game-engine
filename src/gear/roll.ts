@@ -40,7 +40,14 @@
  * must not silently rewrite what somebody paid for.
  */
 import { createRng } from '../battle/prng';
-import { STAT_KEYS, type Item, type Rarity, type StatKey } from '../contracts/types';
+import {
+  STAT_KEYS,
+  type DamageType,
+  type Item,
+  type Rarity,
+  type ResistanceBlock,
+  type StatKey,
+} from '../contracts/types';
 import {
   REROLL_COST_ESCALATION,
   REROLL_COST_MULTIPLIER_BY_RARITY,
@@ -80,6 +87,14 @@ export interface RolledItem {
    * and because an auction house needs it to be comparable across listings.
    */
   readonly quality: number;
+  /**
+   * For a weapon: the school its wielder's blows become. From the template.
+   *
+   * An ordinary weapon has none, and its wielder falls back to their class's.
+   */
+  readonly damageType?: DamageType;
+  /** What wearing this wards off, by school. From the template, never rolled. */
+  readonly resistance?: ResistanceBlock;
   /** Provenance: lets the roll be re-derived and audited. */
   readonly rollSeed: number;
 }
@@ -142,6 +157,14 @@ export function rollItem(template: Item, itemLevel: number, seed: number): Rolle
     slot: template.slot,
     rarity: template.rarity,
     ...(template.setId === undefined ? {} : { setId: template.setId }),
+    /*
+     * CARRIED FROM THE TEMPLATE, UNROLLED. A roll decides how GOOD an item is;
+     * the school it deals and what it wards decide what KIND it is. Rolling them
+     * too would make "frost-warded" a property of one instance rather than of a
+     * piece of gear, and a player could not go looking for one.
+     */
+    ...(template.damageType === undefined ? {} : { damageType: template.damageType }),
+    ...(template.resistance === undefined ? {} : { resistance: { ...template.resistance } }),
     itemLevel,
     /*
      * FROM THE ROLL, NOT THE TEMPLATE.

@@ -1,3 +1,5 @@
+import { RESIST_CAP_PCT } from '../battle/constants';
+import { DAMAGE_TYPES } from '../contracts/types';
 import { hasAffixKind, ZONES, bossPhaseEncounters, bossPhases, bossPhasesAreCoherent, creatureById, creatureRank, zoneById, zonesAreCoherent, AFFIXES, AFFIX_IDS, affixById, CREATURE_IDS } from './catalogue';
 
 /**
@@ -265,5 +267,60 @@ describe('the affix roster', () => {
       expect(affix.name.length).toBeGreaterThan(0);
       expect(affix.description.length).toBeGreaterThan(10);
     }
+  });
+});
+
+/**
+ * ============================================================================
+ * A ZONE'S IDENTITY IS ALSO ITS SCHOOL.
+ * ============================================================================
+ * The Rimewood is frozen, so its creatures deal frost and shrug it off. That is
+ * what makes "what should I be wearing down there" a question with an answer —
+ * and it is the first time in this game that what you are HOLDING matters more
+ * than how big its numbers are.
+ */
+describe('schools and wards across the world', () => {
+  it('never authors a ward above the ceiling, which would read as meaningful and do nothing', () => {
+    for (const id of CREATURE_IDS) {
+      const creature = creatureById(id);
+      for (const value of Object.values(creature?.resistance ?? {})) {
+        expect(value).toBeGreaterThan(0);
+        expect(value).toBeLessThanOrEqual(RESIST_CAP_PCT);
+      }
+    }
+  });
+
+  it('names only schools the engine knows', () => {
+    for (const id of CREATURE_IDS) {
+      const creature = creatureById(id);
+      if (creature?.damageType !== undefined) {
+        expect(DAMAGE_TYPES).toContain(creature.damageType);
+      }
+      for (const school of Object.keys(creature?.resistance ?? {})) {
+        expect(DAMAGE_TYPES).toContain(school);
+      }
+    }
+  });
+
+  /*
+   * A boss that dealt frost in phase one and physical in phase two would make
+   * the gear a player chose on the way in wrong halfway through, for reasons
+   * nothing announced.
+   */
+  it('keeps a boss’s school and wards across every phase', () => {
+    for (const zone of ZONES) {
+      const base = creatureById(zone.bossId);
+      for (const phase of bossPhaseEncounters(zone.bossId) ?? []) {
+        expect(phase.damageType).toBe(base?.damageType);
+        expect(phase.resistance).toEqual(base?.resistance);
+      }
+    }
+  });
+
+  it('gives at least one boss a school worth planning around', () => {
+    const schooled = ZONES.map((zone) => creatureById(zone.bossId)?.damageType).filter(
+      (school) => school !== undefined,
+    );
+    expect(schooled.length).toBeGreaterThan(0);
   });
 });

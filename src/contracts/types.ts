@@ -407,6 +407,18 @@ export interface DerivedCombat {
   regen: number;
   /** Turns sustainable before fatigue, from END. Integer. */
   stamina: number;
+  /**
+   * The school this hero's blows belong to.
+   *
+   * COMES FROM THE WEAPON FIRST, and from the class only when no weapon is held.
+   * That is what makes an elemental weapon a real choice rather than a stat
+   * stick: picking up a frost blade changes what you are, and therefore what
+   * resists you. Optional on the contract for the same reason as `dodgePct` —
+   * a snapshot written before schools existed must still parse.
+   */
+  damageType?: DamageType;
+  /** What this hero shrugs off, in percentage points, by school. */
+  resistance?: ResistanceBlock;
 }
 
 /** Which side of a battle acted. */
@@ -476,6 +488,63 @@ export interface BattleEvent {
   enemyHp: number;
 }
 
+/* -------------------------------------------------------------------------- *
+ * Damage schools
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The schools a blow can belong to.
+ *
+ * ============================================================================
+ * SIX, AND THEY COME FROM THE CLASSES RATHER THAN FROM A COLOUR WHEEL.
+ * ============================================================================
+ * `PHYSICAL` is what every fight in this game was until now. The other five map
+ * onto what the five classes and their fifteen specs already are: a Mage is Fire,
+ * Frost or Lightning, a Priest is Spirit or Shadow, a Paladin is Holy. Inventing
+ * a seventh school with no class behind it would be a resistance nobody can
+ * meaningfully carry and a damage type nobody can deal.
+ *
+ * ORDER IS DISPLAY ORDER and is contract: a hero sheet lists resistances in it.
+ */
+export type DamageType = 'PHYSICAL' | 'FIRE' | 'FROST' | 'LIGHTNING' | 'SHADOW' | 'HOLY';
+
+/** Runtime companion to `DamageType`. Order is display order. */
+export const DAMAGE_TYPES = [
+  'PHYSICAL',
+  'FIRE',
+  'FROST',
+  'LIGHTNING',
+  'SHADOW',
+  'HOLY',
+] as const;
+
+type _DamageTypesAreExhaustive = [
+  AssertAssignable<(typeof DAMAGE_TYPES)[number], DamageType>,
+  AssertAssignable<DamageType, (typeof DAMAGE_TYPES)[number]>,
+];
+
+/**
+ * Resistance to each school, in PERCENTAGE POINTS.
+ *
+ * ============================================================================
+ * A PERCENTAGE, BECAUSE DEFENCE IS ALREADY A SUBTRACTION.
+ * ============================================================================
+ * `defence` is flat: it comes off every blow whatever the blow was. If resistance
+ * were also flat it would be a second defence with a label, and stacking the two
+ * would be the only thing worth doing. A percentage is a genuinely different
+ * axis — it is worth most against the big hits defence barely dents, which is
+ * exactly the case defence is bad at.
+ *
+ * CAPPED IN THE SIMULATOR (`RESIST_CAP_PCT`), never here. A block that could
+ * reach 100 would be immunity, and immunity to a school is a build that cannot
+ * lose to it — which turns gear selection into a lookup rather than a decision.
+ *
+ * An absent school means zero. Absent rather than zero-filled so an item that
+ * wards nothing carries no resistance field at all, and a diff of the catalogue
+ * shows what was actually authored.
+ */
+export type ResistanceBlock = Partial<Record<DamageType, number>>;
+
 /**
  * A battle opponent. Plain data so encounters can be content, tuned or added without
  * touching engine code.
@@ -493,6 +562,16 @@ export interface Encounter {
   defence: number;
   /** Encounter level, used for matchmaking and reward scaling. */
   level: number;
+  /**
+   * The school this creature's blows belong to. `PHYSICAL` when absent.
+   *
+   * OPTIONAL so every encounter authored before schools existed still parses and
+   * still fights exactly as it did — a stored `encounterSnapshot` must stay
+   * replayable, and a required field would invalidate every one of them.
+   */
+  damageType?: DamageType;
+  /** What this creature shrugs off. Absent means it resists nothing. */
+  resistance?: ResistanceBlock;
 }
 
 /** The two possible endings of a battle. A battle always terminates in one of them. */
@@ -570,6 +649,23 @@ export interface Item {
   price?: number;
   /** Minimum hero level required to equip. */
   levelRequirement: number;
+  /**
+   * For a WEAPON: the school its wielder's blows become.
+   *
+   * Meaningless on armour, and absent there rather than defaulted, so the
+   * catalogue reads as what was authored. A weapon without one deals `PHYSICAL`.
+   */
+  damageType?: DamageType;
+  /**
+   * What wearing this wards off, in percentage points, by school.
+   *
+   * FROM THE TEMPLATE, NOT FROM THE ROLL. Two drops of one helm have different
+   * stats and the SAME resistance: a roll decides how good an item is, and
+   * resistance decides what KIND of item it is. Rolling it too would make
+   * "frost-warded" a property of an instance rather than of a piece of gear, and
+   * a player could not go looking for one.
+   */
+  resistance?: ResistanceBlock;
 }
 
 /** What the hero currently has equipped. A slot with no entry is empty. */
